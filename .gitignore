@@ -8,3 +8,4 @@ release/
 *.tsbuildinfo
 docs/shots/_*
 docs/shots/run.log*
+release/_archive/
