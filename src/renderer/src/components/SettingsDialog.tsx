@@ -1,10 +1,19 @@
 /**
- * SettingsDialog —— 设置弹窗。
+ * SettingsDialog —— 设置弹窗（左侧分类导航 + 右侧当前类内容）。
  *
  * 两个模型，分界线是「改完要不要重启」：
  *  - 外观整组（AppearanceSettings）改一下就写盘并 dispatch，不需要点保存；
  *  - 环境 / 行为里影响安装与运行参数的字段（DSH_HOME、安装根、registry、代理、并发数）
  *    仍然走草稿 + 保存。
+ *
+ * 2026-11 分类导航（用户原话：「设置页做一下分类，比如说 主题等等」）：
+ * 原来 AppearanceSettings + 环境 + 行为 + 清单 + 危险区整条平铺，滚到行为那段
+ * 要跨过整个外观区。现在左侧竖排四类：
+ *   外观    —— AppearanceSettings + 深浅模式（原「行为」组里的 theme select）
+ *   环境    —— DSH_HOME / 安装根 / 重新检测 / 诊断（envFocus 信号也指到这类）
+ *   安装与网络 —— registry / 代理 / 并发数 / 额外 pnpm 参数 / forceBundle
+ *   常规    —— 默认 profile / 托盘开关 / 清单导出
+ * 右侧只渲染当前类的内容，dialog__body 不再整条滚动（settings__pane 自己滚）。
  *
  * 数据：settingsGet() → state.settings；probeDir(dir) 做路径检测；proxyTest(input) 测代理
  * 保存：settingsSet(patch) → actions.saveSettings（成功后 refreshEnv 重拉 env 相关数据）
@@ -31,6 +40,16 @@ import {
   pickDirectoryFn,
   pickDshExeFn
 } from './EnvDiagnostics'
+
+/** 设置分类键。顺序就是左侧导航的显示顺序。 */
+type SettingsSection = 'appearance' | 'env' | 'install' | 'general'
+
+const SECTIONS: ReadonlyArray<{ key: SettingsSection; label: string }> = [
+  { key: 'appearance', label: '外观' },
+  { key: 'env', label: '环境' },
+  { key: 'install', label: '安装与网络' },
+  { key: 'general', label: '常规' }
+]
 
 interface ProbeState {
   loading: boolean
@@ -75,6 +94,8 @@ export function SettingsDialog() {
   const [proxyResult, setProxyResult] = useState<ProxyTestResult | null>(null)
   const [exporting, setExporting] = useState(false)
   const [exported, setExported] = useState<ManifestExportResult | null>(null)
+  /** 当前分类。打开时默认落在外观（这一页最常改的就是它）。 */
+  const [section, setSection] = useState<SettingsSection>('appearance')
 
   /* ── 环境：重新检测 + 诊断。两个都是「点了才动」的东西 ── */
 
@@ -128,6 +149,8 @@ export function SettingsDialog() {
     setDiagSteps(null)
     setDiagLoading(false)
     setDiagError(null)
+    // 每次打开回到第一类：上次停在哪个分类不该影响这次想改什么
+    setSection('appearance')
   }, [state.settingsOpen, settings])
 
   /**
@@ -146,7 +169,9 @@ export function SettingsDialog() {
   useEffect(() => {
     if (!state.settingsOpen || !pendingEnvFocus.current) return
     pendingEnvFocus.current = false
-    /* 等一帧再滚：对话框刚挂上时内部高度还在算，这一帧滚过去落点会偏 */
+    /* 环境组在「环境」分类里：先把导航切过去，那一帧的落点高亮才有地方出现。
+     * 等一帧再滚：对话框刚挂上时内部高度还在算，这一帧滚过去落点会偏。 */
+    setSection('env')
     const raf = window.requestAnimationFrame(() => {
       envGroupRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
       setEnvFocusFlash(true)
@@ -400,14 +425,41 @@ export function SettingsDialog() {
         </div>
 
         <div className="dialog__body">
-          {/* 外观放最前：这一页现在最常改的就是它，环境路径基本只改一次 */}
-          <AppearanceSettings draft={draft} set={set} replaceDraft={setDraft} />
+          {/* 分类导航（用户原话：「设置页做一下分类，比如说 主题等等」）：
+              左侧竖排四类，右侧只渲染当前类 —— 原来五个分组整条平铺，
+              滚到「行为」要先跨过整个外观区。 */}
+          <div className="settings__layout">
+            <nav className="settings__nav" aria-label="设置分类">
+              {SECTIONS.map((s) => (
+                <button
+                  key={s.key}
+                  type="button"
+                  className={`settings__nav-item${section === s.key ? ' is-active' : ''}`}
+                  onClick={() => setSection(s.key)}
+                  aria-current={section === s.key ? 'true' : undefined}
+                >
+                  {s.label}
+                </button>
+              ))}
+              <span className="settings__nav-meta">
+                外观改完即生效；环境 / 安装与网络要点「保存」。
+              </span>
+            </nav>
 
-          <div
-            className={`settings__group${envFocusFlash ? ' is-env-focus' : ''}`}
-            ref={envGroupRef}
-          >
-            <div className="section-title">环境</div>
+            <div className="settings__pane">
+              {section === 'appearance' ? (
+                <>
+                  {/* 深浅模式从「行为」组挪过来：它就是外观的一部分 */}
+                  <AppearanceSettings draft={draft} set={set} replaceDraft={setDraft} />
+                </>
+              ) : null}
+
+              {section === 'env' ? (
+                <div
+                  className={`settings__group${envFocusFlash ? ' is-env-focus' : ''}`}
+                  ref={envGroupRef}
+                >
+                  <div className="section-title">环境</div>
 
             <label className="field">
               <span className="field__label">DSH_HOME</span>
@@ -612,27 +664,12 @@ export function SettingsDialog() {
                 emptyText="主进程这次一条路由都没记录 —— 通常意味着探测本身没跑起来。"
               />
             ) : null}
-          </div>
+            </div>
+          ) : null}
 
-          <div className="settings__group">
-            <div className="section-title">行为</div>
-
-            <label className="field">
-              <span className="field__label">默认 profile</span>
-              <select
-                className="select"
-                value={draft.defaultProfile ?? ''}
-                onChange={(e) => set('defaultProfile', e.target.value)}
-              >
-                <option value="">（自动：第一个）</option>
-                {state.profiles.map((p) => (
-                  <option key={p.name} value={p.name}>
-                    {p.name} · {p.depCount} 插件 · {p.bundleCount} 层
-                  </option>
-                ))}
-              </select>
-              <span className="field__hint">启动时默认选中的 profile，也会写回这里。</span>
-            </label>
+          {section === 'install' ? (
+            <div className="settings__group">
+              <div className="section-title">安装与网络</div>
 
             <label className="field">
               <span className="field__label">registry</span>
@@ -753,91 +790,100 @@ export function SettingsDialog() {
               <span className="field__hint">按空格拆开，原样追加到每次 pnpm 调用后面。</span>
             </label>
 
-            <label className="field">
-              <span className="field__label">主题</span>
-              <select
-                className="select"
-                value={draft.theme}
-                onChange={(e) => set('theme', e.target.value as AppSettings['theme'])}
-              >
-                <option value="dark">深色</option>
-                <option value="light">浅色</option>
-                <option value="system">跟随系统</option>
-              </select>
-            </label>
+            <div className="settings__subgroup">
+              <div className="section-title">危险区</div>
 
-            <div className="settings__switch-row">
-              <label className="switch settings__switch">
+              <label className="checkbox settings__check">
                 <input
                   type="checkbox"
-                  checked={draft.minimizeToTray}
-                  onChange={(e) => set('minimizeToTray', e.target.checked)}
-                  disabled={saving}
+                  checked={draft.forceBundle}
+                  onChange={(e) => set('forceBundle', e.target.checked)}
                 />
-                关闭窗口时收进系统托盘
-              </label>
-              <span className="field__hint">
-                {saving ? '正在保存，保存完才能改这个开关。' : '关掉这个开关，点右上角 ✕ 就是直接退出程序。'}
-              </span>
-            </div>
-          </div>
-
-          <div className="settings__group">
-            <div className="section-title">清单</div>
-
-            <div className="field">
-              <span className="field__label">已装清单</span>
-              <div className="field__row">
-                <button
-                  type="button"
-                  className="btn btn--sm"
-                  onClick={() => void onExport()}
-                  disabled={exporting}
-                  title="把当前 profile 的插件清单导出成 JSON"
-                >
-                  {exporting ? <span className="spinner spinner--sm" /> : null}
-                  {exporting ? '导出中…' : '导出已装清单'}
-                </button>
-              </div>
-              <span className="field__hint">
-                导出 profile「{state.activeProfile ?? settings.defaultProfile ?? '（未选择）'}
-                」的插件清单，之后可以在「安装插件 → 导入清单」里批量装回来。
-              </span>
-
-              {exported && exported.ok && exported.path ? (
-                <span className="settings__path" role="status">
-                  <span className="settings__path-text mono selectable" title={exported.path}>
-                    {exported.path}
+                <span>
+                  <span className="settings__check-label">强制写 bundles（forceBundle）</span>
+                  <span className="field__hint field__hint--warn">
+                    装包时不检查 dsh 插件字段也强行写进 dsh.profile.bundles。写错会让 DSH 启动时加载失败，
+                    只有确定自己在装什么时才开。
                   </span>
+                </span>
+              </label>
+            </div>
+            </div>
+          ) : null}
+
+          {section === 'general' ? (
+            <div className="settings__group">
+              <div className="section-title">常规</div>
+
+              <label className="field">
+                <span className="field__label">默认 profile</span>
+                <select
+                  className="select"
+                  value={draft.defaultProfile ?? ''}
+                  onChange={(e) => set('defaultProfile', e.target.value)}
+                >
+                  <option value="">（自动：第一个）</option>
+                  {state.profiles.map((p) => (
+                    <option key={p.name} value={p.name}>
+                      {p.name} · {p.depCount} 插件 · {p.bundleCount} 层
+                    </option>
+                  ))}
+                </select>
+                <span className="field__hint">启动时默认选中的 profile，也会写回这里。</span>
+              </label>
+
+              <div className="settings__switch-row">
+                <label className="switch settings__switch">
+                  <input
+                    type="checkbox"
+                    checked={draft.minimizeToTray}
+                    onChange={(e) => set('minimizeToTray', e.target.checked)}
+                    disabled={saving}
+                  />
+                  关闭窗口时收进系统托盘
+                </label>
+                <span className="field__hint">
+                  {saving ? '正在保存，保存完才能改这个开关。' : '关掉这个开关，点右上角 ✕ 就是直接退出程序。'}
+                </span>
+              </div>
+
+              <div className="field">
+                <span className="field__label">已装清单</span>
+                <div className="field__row">
                   <button
                     type="button"
-                    className="btn btn--sm btn--ghost"
-                    onClick={() => void actions.revealPath(exported.path)}
+                    className="btn btn--sm"
+                    onClick={() => void onExport()}
+                    disabled={exporting}
+                    title="把当前 profile 的插件清单导出成 JSON"
                   >
-                    打开所在文件夹
+                    {exporting ? <span className="spinner spinner--sm" /> : null}
+                    {exporting ? '导出中…' : '导出已装清单'}
                   </button>
+                </div>
+                <span className="field__hint">
+                  导出 profile「{state.activeProfile ?? settings.defaultProfile ?? '（未选择）'}
+                  」的插件清单，之后可以在「安装插件 → 导入清单」里批量装回来。
                 </span>
-              ) : null}
+
+                {exported && exported.ok && exported.path ? (
+                  <span className="settings__path" role="status">
+                    <span className="settings__path-text mono selectable" title={exported.path}>
+                      {exported.path}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn--sm btn--ghost"
+                      onClick={() => void actions.revealPath(exported.path)}
+                    >
+                      打开所在文件夹
+                    </button>
+                  </span>
+                ) : null}
+              </div>
             </div>
-          </div>
-
-          <div className="settings__group">
-            <div className="section-title">危险区</div>
-
-            <label className="checkbox settings__check">
-              <input
-                type="checkbox"
-                checked={draft.forceBundle}
-                onChange={(e) => set('forceBundle', e.target.checked)}
-              />
-              <span>
-                <span className="settings__check-label">强制写 bundles（forceBundle）</span>
-                <span className="field__hint field__hint--warn">
-                  装包时不检查 dsh 插件字段也强行写进 dsh.profile.bundles。写错会让 DSH 启动时加载失败，
-                  只有确定自己在装什么时才开。
-                </span>
-              </span>
-            </label>
+          ) : null}
+            </div>
           </div>
 
           {err ? (

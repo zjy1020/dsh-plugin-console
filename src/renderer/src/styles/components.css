@@ -1449,14 +1449,17 @@
 }
 
 /* =============================== 日志抽屉 =============================== */
+/* 2026-11：日志从「底部抽屉」改成主区 view（用户原话：「日志为什么点开之后还是
+   在已安装，而不是显示日志呢」）。LogDrawer 现在渲染在 .app__view 里，
+   与 PluginList / InstallPanel 同位 —— 外壳不再钉死高度，而是填满主区。 */
 
 .logdrawer {
-  flex: 0 0 var(--log-h);
-  height: var(--log-h);
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border-top: 1px solid var(--border);
+  min-width: 0;
+  border-top: none;
   background: var(--bg-sunken);
 }
 
@@ -1698,8 +1701,8 @@
   overflow: hidden;
 }
 
-.dialog--settings {
-  width: 640px;
+.dialog--confirm {
+  width: 452px;
 }
 
 /*
@@ -1714,10 +1717,6 @@
  */
 .overlay:has(> .dialog--settings) {
   background: color-mix(in srgb, var(--scrim) 45%, transparent);
-}
-
-.dialog--confirm {
-  width: 452px;
 }
 
 .dialog--danger {
@@ -1807,6 +1806,100 @@
 .settings__group .section-title {
   margin-bottom: 0;
 }
+
+/* =========================== 设置分类导航 ===========================
+ * 2026-11（用户原话：「设置页做一下分类，比如说 主题等等」）。
+ * 原来 AppearanceSettings + 环境 + 行为 + 清单 + 危险区整条平铺在 dialog__body 里，
+ * 滚到行为那段要跨过整个外观区 —— 现在左侧竖排四类导航，右侧只渲染当前类。 */
+
+.dialog--settings {
+  width: 780px; /* 左导航 128px + 右内容 640px 左右，比原来宽一截 */
+}
+
+.settings__layout {
+  display: flex;
+  gap: var(--space-4);
+  min-height: 0;
+  flex: 1 1 auto;
+  /* 内容区自己滚：外层 dialog__body 只留纵向 padding，不再整条滚动 */
+  overflow: hidden;
+}
+
+.settings__nav {
+  flex: 0 0 128px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: 2px;
+}
+
+.settings__nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--fg-1);
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.settings__nav-item:hover {
+  background: color-mix(in srgb, var(--fg-3) 12%, transparent);
+  color: var(--fg-0);
+}
+
+.settings__nav-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.settings__nav-item.is-active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.settings__nav-meta {
+  margin-top: auto;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-xxs);
+  color: var(--fg-3);
+  line-height: 1.5;
+}
+
+.settings__pane {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  /* 右侧自己留右 padding，左边贴近导航即可 */
+  padding-right: var(--space-1);
+}
+
+/* 危险区这类「同大类里的子分组」：比 settings__group 更收敛（小一点的标题间距 +
+ * 顶部一道细分隔线），视觉上是当前类里往下沉的一块，不是并列的第五类。 */
+.settings__subgroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid color-mix(in srgb, var(--fg-3) 22%, transparent);
+}
+
+.settings__subgroup .section-title {
+  margin-bottom: 0;
+  font-size: var(--fs-xs);
+}
+
 
 .settings__check {
   align-items: flex-start;

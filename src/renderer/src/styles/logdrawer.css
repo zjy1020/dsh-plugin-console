@@ -43,12 +43,13 @@
  * ---------------------------------------------------------------------------
  * 刻意**不覆盖**的旧规则（值不需要改，覆盖等于把旧值钉死在本文件里，
  * 反而挡住以后在 components.css 里的正当修改）：
- *   components.css:1417 `.logdrawer`        抽屉外壳高度 / 底部背景 —— 结构不变
- *   components.css:1427 `.logdrawer__head`  头栏高度与分隔线 —— 是操作区，不是装饰
- *   components.css:1437 `.logdrawer__title` 标题排版 —— 只删掉了它里面的徽章，字号不改
- *   components.css:1457 `.logdrawer__actions` 按钮排布 —— 不变
- *   components.css:1464 `.logdrawer__box`   滚动区外框与字号 —— 不变
- *   components.css:1474 `.logdrawer__box:focus-visible` 焦点环 —— 可访问性，必须留着
+ *   components.css:1422 `.logdrawer`        外壳 —— 2026-11 已在 components.css
+ *     本体改成「填满主区的 view 外壳」（flex:1 / 无 border-top / bg-sunken），不需要这里再动
+ *   components.css:1432 `.logdrawer__head`  头栏高度与分隔线 —— 是操作区，不是装饰
+ *   components.css:1442 `.logdrawer__title` 标题排版 —— 只删掉了它里面的徽章，字号不改
+ *   components.css:1462 `.logdrawer__actions` 按钮排布 —— 不变
+ *   components.css:1469 `.logdrawer__box`   滚动区外框与字号 —— 不变
+ *   components.css:1479 `.logdrawer__box:focus-visible` 焦点环 —— 可访问性，必须留着
  *
  * 值一律来自 tokens.css 的令牌；本文件不出现字面量颜色与像素。
  * ========================================================================== */

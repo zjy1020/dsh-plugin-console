@@ -187,9 +187,10 @@ function Shell() {
         } else if (state.settingsOpen) {
           e.preventDefault()
           actions.closeSettings()
-        } else if (state.logsOpen) {
+        } else if (state.view === 'logs') {
+          // 日志是 view：Esc = 回到已安装（顶部页签也回得去，这里是键盘路径）
           e.preventDefault()
-          actions.closeLogs()
+          actions.setView('plugins')
         } else if (state.selectedId) {
           e.preventDefault()
           actions.select(null)
@@ -199,7 +200,7 @@ function Shell() {
 
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [actions, state.confirm, state.settingsOpen, state.logsOpen, state.selectedId])
+  }, [actions, state.confirm, state.settingsOpen, state.view, state.selectedId])
 
   const profile = state.profiles.find((p) => p.name === state.activeProfile) ?? null
   const warnings = state.warningsDismissed ? [] : state.runtime?.warnings ?? []
@@ -249,11 +250,10 @@ function Shell() {
         </div>
       ) : null}
 
-      {/* has-logs 是「日志抽屉开着」的状态钩子，不是样式钩子 —— 全仓 CSS 里没有
-          .has-logs 规则，抽屉靠自己是 .app 的 flex 子项占位（App.tsx 末尾那个 <LogDrawer />）。
-          留着它是因为它是这套状态唯一能被外面观测到的 DOM 信号（验收脚本、以后要加样式都靠它），
-          顺手删掉反而没有替代物。 */}
-      <div className={`app__body${state.logsOpen ? ' has-logs' : ''}`}>
+      {/* 日志从「底部抽屉」改成主区 view（用户原话：「日志为什么点开之后还是在已安装，
+           而不是显示日志呢」）—— 抽屉永远只盖住主区下半截，主区还停在已安装，
+           看起来就是「点了没反应」。view 化之后点侧栏「运行日志」主区整个换成日志。 */}
+      <div className="app__body">
         <SidebarShell />
 
         <main
@@ -306,14 +306,21 @@ function Shell() {
           </div>
 
           <div className="app__view">
-            {state.view === 'plugins' ? <PluginList /> : <InstallPanel />}
+            {state.view === 'logs' ? (
+              <LogDrawer />
+            ) : state.view === 'plugins' ? (
+              <PluginList />
+            ) : (
+              <InstallPanel />
+            )}
           </div>
         </main>
 
         {detailOpen ? <PluginDetail /> : null}
       </div>
 
-      <LogDrawer />
+      {/* LogDrawer 不再在底部挂载：它现在是主区 view（上面 app__view 里渲染）。
+          SettingsDialog 还是模态弹窗，继续挂最外层。 */}
       <SettingsDialog />
 
       {/* 拖拽导入壁纸：挂在最外层，因为它要监听整个窗口的 drag 事件 */}

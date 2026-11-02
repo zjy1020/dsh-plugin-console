@@ -82,7 +82,10 @@ export const FILTERS: FilterMeta[] = [
   { key: 'builtin', label: '官方内置', hint: '随 runtime 发布的官方层' }
 ]
 
-export type ViewKey = 'plugins' | 'install'
+/* 日志也是 view：用户原话「日志为什么点开之后还是在已安装，而不是显示日志呢」——
+ * 底部抽屉永远盖不住主区，侧栏点「运行日志」就必须把主区换成日志。
+ * 与抽屉的另一个区别：view 是互斥的目的地，抽屉是「叠在别人身上的一块」。 */
+export type ViewKey = 'plugins' | 'install' | 'logs'
 
 export type ToastLevel = 'info' | 'success' | 'warn' | 'error'
 
@@ -246,7 +249,6 @@ export interface ConsoleState {
   updates: Record<string, UpdateSnapshot>
 
   logs: LogLine[]
-  logsOpen: boolean
   op: OpRunState | null
   lastResult: OpResult | null
 
@@ -280,7 +282,6 @@ const INITIAL_STATE: ConsoleState = {
   progress: null,
   updates: {},
   logs: [],
-  logsOpen: false,
   op: null,
   lastResult: null,
   confirm: null,
@@ -316,8 +317,6 @@ type Action =
   | { type: 'checkProgress'; value: UpdateCheckProgress }
   | { type: 'checkDone' }
   | { type: 'log'; lines: LogLine[] }
-  | { type: 'logsOpen'; value: boolean }
-  | { type: 'logsToggle' }
   | { type: 'logsClear' }
   | { type: 'opStart'; value: OpRunState }
   | { type: 'opEnd'; value: OpResult | null }
@@ -616,19 +615,14 @@ function reducer(state: ConsoleState, action: Action): ConsoleState {
       return { ...state, search: action.value }
 
     case 'filter':
-      /* 导航类动作顺手收掉日志抽屉：侧栏那块玻璃滑块只有一个位置
-       * （SidebarShell 的 activeId 优先级 settingsOpen → logsOpen → 第一个 active 项），
-       * 抽屉开着的时候滑块被「运行日志」钉死，你点了别的筛选它也不跟 ——
-       * 看界面就像卡在日志页出不来。收掉抽屉，高亮才回得到你点的那一项。
-       * select 不在此列：插件详情和抽屉是并排的，看详情不该把正在跑的输出藏起来。 */
-      return { ...state, filter: action.value, logsOpen: false }
+      /* 日志从抽屉改成 view 之后，抽屉不再挡筛选的高亮 —— 这里只剩纯筛选语义。 */
+      return { ...state, filter: action.value }
 
     case 'showBuiltin':
       return { ...state, showBuiltinLayer: action.value }
 
     case 'view':
-      /* 同上：切到别的页面（插件 / 安装）就说明用户的注意力走了，抽屉让位 */
-      return { ...state, view: action.value, logsOpen: false }
+      return { ...state, view: action.value }
 
     case 'select':
       return { ...state, selectedId: action.id }
@@ -710,22 +704,15 @@ function reducer(state: ConsoleState, action: Action): ConsoleState {
       return { ...state, logs, op }
     }
 
-    case 'logsOpen':
-      return { ...state, logsOpen: action.value }
-
-    /* 侧栏「运行日志」那一项只能调 openLogs（SidebarShell 不归这个文件管），
-     * 做成纯开的话抽屉开着时再点一次就是哑炮 —— 用户点了没反应会以为界面死了。
-     * 所以给它一个开合动作，两个入口（侧栏项、工具栏「日志」按钮）共用同一套语义。 */
-    case 'logsToggle':
-      return state.logsOpen
-        ? { ...state, logsOpen: false }
-        : { ...state, logsOpen: true, settingsOpen: false }
-
     case 'logsClear':
       return { ...state, logs: [] }
 
     case 'opStart':
-      return { ...state, op: action.value, logsOpen: true, lastResult: null }
+      /* 不再强制弹日志。用户原话：「每次点击更新之后就自动跳转到日志面板 很麻烦
+       * 我还要更新别的呢」—— 连续更新多个包时，每点一次就被拽到日志页一次，
+       * 还得切回列表再勾下一个。运行状态由 Toast 与列表行内状态自己汇报；
+       * 想看输出的人自己点侧栏「运行日志」。 */
+      return { ...state, op: action.value, lastResult: null }
 
     case 'opEnd': {
       const result = action.value
@@ -742,11 +729,8 @@ function reducer(state: ConsoleState, action: Action): ConsoleState {
       return { ...state, confirmBusy: action.value }
 
     case 'settingsOpen':
-      /* 设置是模态弹窗，和抽屉抢的是同一个「我现在在这儿」的位置：
-       * 两个都开着侧栏会同时亮「运行日志」和「环境与设置」，
-       * 而滑块只能停在其中一个（activeId 把 settings 排在 logs 前面），
-       * 于是另一个的 is-active 就成了骗人的死高亮。开设置就收抽屉。 */
-      return { ...state, settingsOpen: action.value, logsOpen: action.value ? false : state.logsOpen }
+      /* 设置是模态弹窗，与日志 view 不互斥（它盖在最上层）。 */
+      return { ...state, settingsOpen: action.value }
 
     case 'warnDismiss':
       return { ...state, warningsDismissed: true }
@@ -946,11 +930,6 @@ export interface ConsoleActions {
   select: (id: string | null) => void
   openSettings: () => void
   closeSettings: () => void
-  /** 开日志抽屉（开合语义：侧栏「运行日志」那一项只能调它，见 reducer 的 logsToggle） */
-  openLogs: () => void
-  /** 明确开合的入口，工具栏「日志」按钮用 */
-  toggleLogs: () => void
-  closeLogs: () => void
   clearLogs: () => void
   dismissWarnings: () => void
   toast: (level: ToastLevel, title: string, detail?: string) => void
@@ -1785,9 +1764,6 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
       select: (id: string | null) => dispatch({ type: 'select', id }),
       openSettings: () => dispatch({ type: 'settingsOpen', value: true }),
       closeSettings: () => dispatch({ type: 'settingsOpen', value: false }),
-      openLogs: () => dispatch({ type: 'logsToggle' }),
-      toggleLogs: () => dispatch({ type: 'logsToggle' }),
-      closeLogs: () => dispatch({ type: 'logsOpen', value: false }),
       clearLogs: () => dispatch({ type: 'logsClear' }),
       dismissWarnings: () => dispatch({ type: 'warnDismiss' }),
       toast,

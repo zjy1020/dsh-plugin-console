@@ -1,8 +1,8 @@
 /**
- * LogDrawer —— 底部日志抽屉。
+ * LogDrawer —— 运行日志页（主区 view）。
  *
  * 数据：onOpLog → state.logs（store 里已按 opId 折叠 \r 进度行）；onOpDone → state.lastResult
- * 动作：cancelOp(opId) / restartDsh() / clearLogs()
+ * 动作：cancelOp(opId) / restartDsh() / clearLogs() / setView('plugins')
  *
  * 这一版把它做成了纯文本流（用户原话：「日志只是显示信息的而不是这样的」）：
  *   1. 头顶的「转圈 + 操作名」和「成功 / 失败 (code N)」徽章没有了 ——
@@ -12,6 +12,10 @@
  *   4. 「重启 DSH」是唯一保留下来的控件形状 —— 它是动作不是装饰，还会中断当前会话，
  *      必须看得见、点得着，所以做成无边框的文字按钮（复用 base.css 的 .link-btn），
  *      功能一点没少：仍然调 actions.restartDsh()。
+ *
+ * 2026-11：从「底部抽屉」改成主区 view（用户原话：「日志为什么点开之后还是在已安装，
+ * 而不是显示日志呢」）。open 守卫删了 —— 由 App.tsx 的 app__view 按 view === 'logs'
+ * 条件渲染；右上角 ✕ 变成「回到已安装」。
  *
  * 观看相关的覆盖全在 styles/logdrawer.css，那里有完整的特异性账本
  * （为什么新建文件而不是改 components.css、每条选择器凭什么赢）。
@@ -45,7 +49,6 @@ export function LogDrawer() {
   const [autoScroll, setAutoScroll] = useState(true)
 
   const logs = state.logs
-  const open = state.logsOpen
   const op = state.op
   const result = state.lastResult
 
@@ -57,13 +60,11 @@ export function LogDrawer() {
    * 所以把这两次状态变化也算作「有内容进流」。下面的 onScroll 判断一个字没动：
    * 那是踩过坑才有的（24px 那个阈值就是坑本身）。 */
   useEffect(() => {
-    if (!open || !autoScroll) return
+    if (!autoScroll) return
     const el = boxRef.current
     if (!el) return
     el.scrollTop = el.scrollHeight
-  }, [open, autoScroll, logs.length, logs[logs.length - 1]?.text, op?.startedAt, result?.endedAt])
-
-  if (!open) return null
+  }, [autoScroll, logs.length, logs[logs.length - 1]?.text, op?.startedAt, result?.endedAt])
 
   const onScroll = () => {
     const el = boxRef.current
@@ -129,7 +130,13 @@ export function LogDrawer() {
           >
             清空
           </button>
-          <button type="button" className="icon-btn" onClick={actions.closeLogs} aria-label="关闭日志" title="关闭 (Esc)">
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => actions.setView('plugins')}
+            aria-label="回到已安装"
+            title="回到已安装 (Esc)"
+          >
             ✕
           </button>
         </span>

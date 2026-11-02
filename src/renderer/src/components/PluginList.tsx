@@ -314,12 +314,11 @@ export function PluginList() {
 
           <button
             type="button"
-            className={`btn btn--sm${state.logsOpen ? '' : ' btn--ghost'}`}
-            /* 为什么改走 toggleLogs：侧栏那一项和这个按钮必须同一套语义，
-             * 否则「点一下开、再点一下关」只有一边成立，另一边变成哑炮 */
-            onClick={actions.toggleLogs}
-            aria-pressed={state.logsOpen}
-            title={state.logsOpen ? '收起操作日志' : '展开操作日志'}
+            className="btn btn--sm btn--ghost"
+            /* 日志 view 化：这个按钮的意义是「跳过去看」，不是开合抽屉 ——
+             * 跳过去的动作就是 setView('logs')，与侧栏那一项同一套语义。 */
+            onClick={() => actions.setView('logs')}
+            title="到运行日志页查看 pnpm 输出"
           >
             日志{state.logs.length > 0 ? ` (${state.logs.length})` : ''}
           </button>

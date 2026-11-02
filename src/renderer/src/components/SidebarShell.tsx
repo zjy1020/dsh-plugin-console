@@ -177,8 +177,10 @@ export function SidebarShell() {
           label: '运行日志',
           icon: <IconLog />,
           hint: '看 pnpm 到底跑了什么',
-          go: () => actions.openLogs(),
-          active: state.logsOpen
+          /* 日志 view 化：点它主区整个换成日志（以前是弹底部抽屉，主区不动，
+           * 用户以为点了没反应）。active 也按 view 判断 —— 滑块跟着走。 */
+          go: () => actions.setView('logs'),
+          active: state.view === 'logs'
         },
         {
           id: 'settings',
@@ -192,20 +194,19 @@ export function SidebarShell() {
     })
 
     return items
-  }, [actions, counts, state.filter, state.logsOpen, state.plugins, state.settingsOpen, state.view])
+  }, [actions, counts, state.filter, state.plugins, state.settingsOpen, state.view])
 
   const activeId = useMemo(() => {
     /* 「刚打开的面板」优先于「当前筛选」：筛选项在你看设置的时候依然是生效的
      * （列表还在那儿，只是被挡住了），所以按组顺序找第一个 active 会永远命中筛选，
      * 滑块就不会跟着你点的那一项走 —— 看起来像没反应。 */
     if (state.settingsOpen) return 'settings'
-    if (state.logsOpen) return 'logs'
     for (const g of navGroups) {
       const hit = g.items.find((i) => i.active)
       if (hit) return hit.id
     }
     return null
-  }, [navGroups, state.logsOpen, state.settingsOpen])
+  }, [navGroups, state.settingsOpen])
 
   /* 量出当前项的位置 → 把滑块移过去。dependent on 尺寸变化，所以也监听 resize */
   const measure = useCallback(() => {
