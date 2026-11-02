@@ -1,0 +1,563 @@
+/* =============================================================================
+ * env-setup.css —— 环境引导卡 / 环境诊断区 / 「浏览…」按钮。
+ *
+ * 加载顺序的坑（本文件所有「盖既有规则」的地方都因此带了祖先选择器）：
+ * main.tsx 里 `import { App } from './App'` 排在四条 styles 之前，ESM 是深度优先求值，
+ * 所以 App 这一支里的 CSS（包括本文件）在产物里**排在 base/components/glass 之前**。
+ * 同特异性的规则是后者赢 —— 本文件想改既有规则就必须抬特异性（多一层祖先），
+ * 而不是用 !important。新类之间不冲突，正常写。
+ *
+ * 玻璃语言：诊断区用 --gl-bed-color 衬底 + 细边框，**故意不用 backdrop-filter** ——
+ * 设置面板本身就是一块玻璃，玻璃里再叠玻璃，模糊层数会翻倍，背景复杂时字直接糊掉。
+ * ========================================================================== */
+
+/* ------------------------------------------------------------------ *
+ * 一、首屏引导卡（顶部那条「找不到 DSH 环境」）
+ * ------------------------------------------------------------------ */
+
+/*
+ * .app__fatal 给的是「一行横条」的布局（align-items: center），而引导卡要纵排：
+ * 标题 / 正文 / 按钮 / 结果 / 诊断明细。所以多带一层 .app 把它的排列属性盖掉。
+ *
+ * ★ 左边必须让位给侧栏 —— 这条是「新电脑上界面 UI 全偏移」的真凶。
+ *   .sb 是 position: fixed（glass.css:70-80），完全不参与文档流；主区靠
+ *   .shell-main 的 margin-left 自己让开（glass.css:1075）。而这张卡是 .app
+ *   （flex column）的普通子项，默认从 x=0 铺满整宽 → 卡片里所有内容
+ *   （标题 x=31、正文 x=31、按钮 x=16、诊断条目 x=29）全部落在侧栏覆盖的
+ *   0~258 区间里，被整块盖住。用户看到的就是「标题栏下面一大片空白，
+ *   主区被顶到下半屏」，而侧栏因为 fixed 纹丝不动 —— 看起来就像布局崩了。
+ *   数值与 .shell-main 完全一致，收起态跟着换 --sb-w-collapsed。
+ */
+.app > .envset {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--sp-2);
+  margin: var(--sb-margin) var(--sb-margin) 0
+    calc(var(--sb-w-expanded) + var(--sb-margin) * 2);
+  /* 横条形态（直角、只留底边）换成与主区一致的悬浮卡片：它现在让开了侧栏，
+     再留着贴边的直角会显得是从窗口左上角漏出来的一块补丁。 */
+  border: 1px solid var(--danger-line);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--danger) 8%, var(--gl-bed-color));
+  /* 明细可能很长，卡片自己滚，别把下面整个主区顶出屏幕。
+     46vh 太狠了 —— 环境全缺时它能吃掉半个窗口。明细默认收起（见 App.tsx），
+     这里只是兜底上限。 */
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+/*
+ * 侧栏收起时让位跟着变窄（与 glass.css:1080 的 .shell-main--collapsed 同款）。
+ *
+ * 两条选择器写的是同一件事，故意留两份：
+ *   · :has() 直接盯**侧栏自己的** .sb--collapsed —— 这才是宽度真正变窄的那个类，
+ *     跟着它走就不可能和实际宽度失配；
+ *   · .app--sb-collapsed 是 App 根节点上的同名状态类，作为 :has() 不可用时的退路。
+ * 为什么强调「侧栏自己的类」：验证脚本里只给 .app 加类、没给 .sb 加类，
+ * 侧栏仍是 248px 而卡片让位缩到了 84px —— 卡片直接压到侧栏底下。
+ * 真实运行里两个类由同一个 settings 一起切，不会分叉；但让 CSS 盯住真正的那个，
+ * 才不用赌「两处状态永远同步」。
+ */
+.app:has(> .app__body > .sb.sb--collapsed) > .envset,
+.app--sb-collapsed > .envset {
+  margin-left: calc(var(--sb-w-collapsed) + var(--sb-margin) * 2);
+}
+
+/* 危险条原本整条都是 --danger（连正文都是红的）。这里只留标题红，
+   正文与诊断条目要中性色 —— 一整块红字读不进去，反而看不出哪句是重点。 */
+.app > .envset .envset__title {
+  color: var(--danger);
+}
+
+.app > .envset .envset__lead,
+.app > .envset .envset__err {
+  color: var(--fg-1);
+}
+
+.envset__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.envset__title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-hair);
+  min-width: 0;
+}
+
+.envset__title {
+  font-size: var(--fs-body2, var(--fs-sm));
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.envset__lead {
+  font-size: var(--fs-meta2, var(--fs-sm));
+  line-height: 1.5;
+}
+
+.envset__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.envset__found {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-1);
+  font-size: var(--fs-meta2, var(--fs-sm));
+  color: var(--ok);
+}
+
+.envset__found-path,
+.envset__err {
+  min-width: 0;
+  word-break: break-all;
+}
+
+.envset__found-path {
+  color: var(--fg-0);
+}
+
+.envset__err {
+  margin: 0;
+  font-size: var(--fs-caption, var(--fs-xs));
+  line-height: 1.45;
+}
+
+/* 「安装目录没找到」这类**不拦人**的旁注：说得清、但视觉上不许抢主按钮的位置。
+   它跟红字不是一回事 —— 红字是「现在装不了」，这条是「装得了，只是某个按钮用不上」。 */
+.envset__note {
+  margin: 0;
+  font-size: var(--fs-caption, var(--fs-xs));
+  line-height: 1.5;
+  color: var(--fg-3);
+}
+
+/* 引导卡里的诊断区：跟设置面板里的同一个组件，只是外面更紧一点 */
+.envset__diag {
+  margin-top: var(--sp-1);
+}
+
+/* 「看诊断明细（N 条没命中）▾」—— 明细的开关。
+   左对齐、自己一行，跟上面三个自救按钮拉开一档间距：
+   它是「查看」不是「出路」，不能让它在视觉上跟「自动检测一遍」平级。 */
+.app > .envset .envset__diagtoggle {
+  align-self: flex-start;
+  margin-top: var(--sp-1);
+  color: var(--fg-2);
+}
+
+.app > .envset .envset__diagtoggle:hover {
+  color: var(--fg-0);
+}
+
+/* ------------------------------------------------------------------ *
+ * 二、诊断区
+ * ------------------------------------------------------------------ */
+
+/*
+ * 上限高度写死在容器上，而不是让它随条目数长 —— 磁盘扫描那条路由能有几十条，
+ * 摊开就会把「浏览…」按钮顶到屏幕外，而那正是用户唯一的出口。
+ */
+.envdiag {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--gl-bed-edge);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--gl-bed-color) calc(var(--gl-bed-alpha) * 100%), transparent);
+  max-height: 280px;
+  overflow-y: auto;
+  font-size: var(--fs-meta2, var(--fs-sm));
+  color: var(--fg-1);
+}
+
+.envdiag__hint {
+  margin: 0;
+  color: var(--fg-1);
+  line-height: 1.5;
+}
+
+.envdiag__warns {
+  margin: 0;
+  padding-left: var(--sp-4);
+  color: var(--warn);
+  line-height: 1.5;
+}
+
+.envdiag__state {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  color: var(--fg-2);
+}
+
+.envdiag__state--bad {
+  color: var(--danger);
+}
+
+.envdiag__empty,
+.envdiag__count {
+  margin: 0;
+  color: var(--fg-2);
+  font-size: var(--fs-caption, var(--fs-xs));
+}
+
+.envdiag__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-hair);
+  padding-top: var(--sp-1);
+}
+
+.envdiag__group + .envdiag__group {
+  border-top: 1px solid var(--border-soft);
+  margin-top: var(--sp-1);
+}
+
+.envdiag__group-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: 0;
+}
+
+.envdiag__group-name {
+  font-size: var(--fs-caption, var(--fs-xs));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--fg-0);
+}
+
+.envdiag__group-count {
+  font-size: var(--fs-caption, var(--fs-xs));
+  color: var(--fg-2);
+}
+
+.envdiag__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-hair);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.envdiag__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--sp-2);
+  align-items: baseline;
+  /* 没命中的条目压暗：列表里多数是「试过但没成」，它们只提供上下文，
+     不能让一堆中性条目跟真正命中的那两行抢注意力。 */
+  color: var(--fg-2);
+  line-height: 1.45;
+}
+
+.envdiag__item.is-ok {
+  color: var(--ok);
+}
+
+.envdiag__mark {
+  color: inherit;
+}
+
+.envdiag__path {
+  min-width: 0;
+  word-break: break-all;
+}
+
+.envdiag__item.is-ok .envdiag__path {
+  color: var(--fg-0);
+}
+
+.envdiag__detail {
+  /* detail 是给人看的解释，占整行（缩进到 path 之下），别挤在列里折成三段 */
+  grid-column: 2;
+  color: var(--fg-2);
+  font-size: var(--fs-caption, var(--fs-xs));
+}
+
+.envdiag__item.is-ok .envdiag__detail {
+  color: var(--fg-1);
+}
+
+/* ------------------------------------------------------------------ *
+ * 三、设置面板里的检测结果与「浏览…」
+ * ------------------------------------------------------------------ */
+
+.envset__summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-hair);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--gl-bed-edge);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--gl-bed-color) calc(var(--gl-bed-alpha) * 100%), transparent);
+}
+
+.envset__line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-width: 0;
+  font-size: var(--fs-caption, var(--fs-xs));
+  color: var(--fg-1);
+}
+
+.envset__line-key {
+  flex: 0 0 auto;
+  color: var(--fg-2);
+}
+
+.envset__line-val {
+  min-width: 0;
+  word-break: break-all;
+  color: var(--fg-0);
+}
+
+.envset__line-from {
+  flex: 0 0 auto;
+  color: var(--fg-2);
+}
+
+.envset__line-val--miss {
+  color: var(--warn);
+}
+
+/* 「浏览…」按钮：比同排的「检测」更该被看见（手打路径正是用户抱怨的那一步），
+   所以给它品牌色的描边 —— 但仍是低调节奏，不抢同页的「保存」主按钮。
+   引导卡里那个「手动选择安装目录…」也用同一个类，所以选择器带上两个祖先。 */
+.dialog .envbrowse,
+.app > .envset .envbrowse {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  border-color: color-mix(in srgb, var(--p-brand) 45%, var(--border));
+  color: var(--p-brand);
+}
+
+.dialog .envbrowse:disabled,
+.app > .envset .envbrowse:disabled {
+  border-color: var(--border);
+  color: var(--fg-3);
+}
+
+/*
+ * 「去设置里指定安装目录」把用户送进这一页时的落点提示。
+ * 只做一个短暂的左缘高亮：用户需要知道「就是这一块」，但不需要一个持久的状态
+ * （它不是一个模式，也不是错误）。
+ */
+.dialog .settings__group.is-env-focus {
+  margin-left: calc(-1 * var(--sp-2));
+  padding-left: var(--sp-2);
+  border-left: 2px solid var(--p-brand);
+  transition: border-color var(--t-3, var(--dur-base)) var(--e-standard, var(--ease-out));
+}
+
+/* ------------------------------------------------------------------ *
+ * 四、安装页在「还没 profile」时的兜底出口
+ * ------------------------------------------------------------------ */
+
+/*
+ * 空态本身已经给了两个主按钮，这条只是「两个都不成」时的第三条路，
+ * 所以做成一行的弱化提示，压在空态下面 —— 不能跟主按钮抢位置。
+ * 它也必须自己居中：.install 是 flex column + align-items 默认 stretch，
+ * 不写 max-width/auto 就会从左边铺到右边，看起来像条注释栏。
+ */
+.install__fallback {
+  margin: 0 auto;
+  max-width: 560px;
+  text-align: center;
+  font-size: var(--fs-caption, var(--fs-xs));
+  color: var(--fg-2);
+  line-height: 1.6;
+}
+
+/*
+ * 行内文字按钮（「…就去设置里手动填路径」里的「设置」）。
+ * 用 button 不用 <a>：它不导航，只改界面状态。
+ * 下划线常驻是故意的 —— 颜色只差一档时，纯靠色差会被当成正文的一部分。
+ */
+.linkbtn {
+  padding: 0 var(--sp-hair);
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--p-brand);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.linkbtn:hover {
+  color: var(--fg-0);
+}
+
+.linkbtn:focus-visible {
+  outline: 2px solid var(--p-brand);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+/* ================================================================== *
+ * RuntimeProvision —— 「缺 node / pnpm」时的一键补全
+ *
+ * 这块 UI 的处境很特殊：它只在「环境坏了」的时候出现，也就是说用户
+ * 每次看到它，都是在一次失败之后。所以这里刻意不做任何装饰性动效，
+ * 只保证三件事看得清：按钮要拷多少、进度真的在动、失败了是为什么。
+ *
+ * 一律不用 backdrop-filter：这张卡本身已经在 .envset 的衬底上了，
+ * 再套一层会变成玻璃里的玻璃（见 appearance-settings.css 的同款说明）。
+ * ================================================================== */
+
+.rtprov {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--gl-bed-edge);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--fg-0) 4%, transparent);
+}
+
+.rtprov__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.rtprov__go {
+  flex: 0 0 auto;
+}
+
+/*
+ * 「连 python 一起」的勾选。
+ * 它是可选项而不是主按钮的兄弟 —— 用 label 包住 input 让它整块可点，
+ * 但字号压到 caption 一档：它不该和「一键补全」抢注意力。
+ */
+.rtprov__opt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: var(--fs-caption, var(--fs-xs));
+  color: var(--fg-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.rtprov__opt input {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: var(--p-brand);
+  cursor: pointer;
+}
+
+.rtprov__opt input:disabled {
+  cursor: default;
+}
+
+/* 进度条：2px 高的细条，不用圆角胶囊 —— 胶囊在这个尺度上会糊成一团 */
+.rtprov__prog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.rtprov__bar {
+  position: relative;
+  height: 3px;
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--fg-0) 12%, transparent);
+  overflow: hidden;
+}
+
+.rtprov__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--p-brand);
+  /*
+   * 宽度是逐帧变的（主进程 120ms 推一次），过渡时间必须短于推送间隔，
+   * 否则条子会一直追不上真实进度、看起来像卡住。120ms 推送 + 90ms 过渡
+   * 刚好让它连续爬。
+   */
+  transition: width 90ms linear;
+}
+
+.rtprov__meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-width: 0;
+  font-size: var(--fs-caption, var(--fs-xs));
+  color: var(--fg-2);
+}
+
+.rtprov__pct {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-1);
+}
+
+.rtprov__msg {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* 当前文件路径：一行、尾部省略。它是「它在干活」的证据，不该换行把卡撑高 */
+.rtprov__cur {
+  flex: 1 1 60px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--fg-3);
+  font-size: var(--fs-caption, var(--fs-xs));
+}
+
+.rtprov__ok {
+  margin: 0;
+  font-size: var(--fs-caption, var(--fs-xs));
+  color: var(--ok);
+  line-height: 1.6;
+}
+
+.rtprov__fail {
+  margin: 0;
+  font-size: var(--fs-caption, var(--fs-xs));
+  color: var(--danger);
+  line-height: 1.6;
+}
+
+/*
+ * 「来源：<路径>（版本 · 平台/架构）」。
+ * 单独一行、字号最小：出问题时用户要能指出「你拷的是哪份」，
+ * 平时它只是不碍事的注脚。
+ */
+.rtprov__from {
+  margin: 0;
+  font-size: var(--fs-caption, var(--fs-xs));
+  color: var(--fg-3);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* 「不能补」的原因（没装桌面端 / 载荷架构不符）：只说明，不给按钮 */
+.rtprov__why {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-caption, var(--fs-xs));
+  color: var(--fg-2);
+  line-height: 1.6;
+}

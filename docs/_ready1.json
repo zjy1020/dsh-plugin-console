@@ -1,0 +1,40 @@
+{
+  "url": "file:///D:/%E9%A1%B9%E7%9B%AE/DSH/deepseekharness%E6%8F%92%E4%BB%B6%E5%8F%B0/out/renderer/index.html",
+  "sidebarProfiles": [
+    "desktop16 插件 · 18 加载层headless0 插件 · 2 加载层未初始化web7 插件 · 9 加载层",
+    "desktop16 插件 · 18 加载层",
+    "desktop",
+    "16 插件 · 18 加载层",
+    "headless0 插件 · 2 加载层未初始化",
+    "headless",
+    "0 插件 · 2 加载层",
+    "未初始化"
+  ],
+  "bodyHead": "DSH 插件台 | desktop | 16 插件 · 18 加载层 | PROFILE | 3 | desktop | 16 插件 · 18 加载层 | headless | 0 插件 · 2 加载层 | 未初始化 | web | 7 插件 · 9 加载层 | 过滤 | 全部 | 16 | 可更新 | 0 | 已停用 | 4 | 第三方 | 16 | 官方内置 | 6 | 显示官方内置层 | runtime 0.2.1-rc.5 · 已装占用 — | DSH 运行中 | 9 进程 | ↻ | 启动 D",
+  "tabs": [
+    {
+      "label": "智能输入",
+      "selected": "true"
+    },
+    {
+      "label": "搜索 npm",
+      "selected": "false"
+    },
+    {
+      "label": "手动 spec",
+      "selected": "false"
+    },
+    {
+      "label": "导入清单",
+      "selected": "false"
+    },
+    {
+      "label": "插件市场",
+      "selected": "false"
+    }
+  ],
+  "hasMarketTab": true,
+  "marketRendered": true,
+  "emptyState": null,
+  "profileShown": null
+}

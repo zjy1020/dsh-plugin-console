@@ -1,0 +1,201 @@
+/* =============================================================================
+ * logdrawer.css —— 日志抽屉：纯文本流（终端观感）
+ *
+ * 需求来源（用户原话）：「日志不要这样弄，日志只是显示信息的而不是这样的」。
+ * 也就是说日志区只负责信息输出：没有状态徽章、没有彩色通道方块、没有结果卡片。
+ * 本文件把那一片旧装饰规则压掉，把它变成单一字号、单一灰阶层级的等宽文本流。
+ *
+ * ---------------------------------------------------------------------------
+ * 为什么新建文件、不动 components.css：
+ *   1) 同一时刻主控与别的子代理都在改 components.css，动它必然抢文件；
+ *   2) 这个项目已经踩过「同名规则被拆到不同文件、靠 import 顺序决胜负」的坑 ——
+ *      components.css:2399-2407 那段「附二」整段就是在讲这件事。
+ *      main.tsx 的实际加载顺序是：
+ *        :9  import './App'          → LogDrawer 被静态牵连进来（App.tsx:12）→ 本文件在此生效
+ *        :11 tokens.css → :12 base.css → :13 components.css → :14 glass.css
+ *      所以本文件永远排在 components.css **前面**，同特异性必输。
+ *   3) 结论：这里一律抬特异性，不用 !important。
+ *      （!important 会连别人日后正当的覆盖一起挡掉，是把坑留给下一个人 ——
+ *        与 components.css:2404-2405 的判断一致。）
+ *
+ * ---------------------------------------------------------------------------
+ * 特异性账本（旧规则行号 → 旧特异性 → 新特异性，为什么能赢）：
+ *   components.css:1484 `.logline`                      (0,1,0) → `.logdrawer .logline`                      (0,2,0) ✔
+ *   components.css:1495 `.logline__at`                  (0,1,0) → `.logdrawer .logline__at`                  (0,2,0) ✔
+ *   components.css:1501 `.logline__chan`                (0,1,0) → `.logdrawer .logline__chan`                (0,2,0) ✔
+ *   components.css:1508 `.logline__text`                (0,1,0) → `.logdrawer .logline__text`                (0,2,0) ✔
+ *   components.css:1512 `.logline--stdout`              (0,1,0) → `.logdrawer .logline--stdout`              (0,2,0) ✔
+ *   components.css:1516 `.logline--stderr .logline__text|__chan` (0,2,0) → `.logdrawer .logline--stderr …`  (0,3,0) ✔
+ *   components.css:1521 `.logline--system .logline__text|__chan` (0,2,0) → `.logdrawer .logline--system …`  (0,3,0) ✔
+ *   components.css:1526 `.logline--progress`            (0,1,0) → `.logdrawer .logline--progress`            (0,2,0) ✔
+ *   components.css:1531 `.logline--progress .logline__text` (0,2,0) → `.logdrawer .logline--progress .logline__text` (0,3,0) ✔
+ *   components.css:1478 `.logdrawer__empty`             (0,1,0) → `.logdrawer .logdrawer__empty`             (0,2,0) ✔
+ *   结构卡片那一片（:1447 / :1535-1636）由文件末尾那条组规则统一压掉，见那里的注释。
+ *
+ * 已核对 components.css:2476-2631 那 6 组新追加的 `.app__body > .sb` 覆盖规则：
+ *   它们**不碰日志抽屉**（全部挂在侧栏 `.sb` 上），且特异性账目如下 ——
+ *     `.app__body > .sb`                              = 0,2,0
+ *     `.app__body > .sb .sb__logo`                    = 0,3,0
+ *     `.app__body > .sb.sb--collapsed .sb__user`      = 0,4,0
+ *   也就是说那一带的实际特异性是 0,2,0 起步、最高到 0,4,0（不是统一的 0,2,0）。
+ *   本文件与它们没有同名选择器，不冲突；列出这段只是把账当面核清。
+ *
+ * ---------------------------------------------------------------------------
+ * 刻意**不覆盖**的旧规则（值不需要改，覆盖等于把旧值钉死在本文件里，
+ * 反而挡住以后在 components.css 里的正当修改）：
+ *   components.css:1417 `.logdrawer`        抽屉外壳高度 / 底部背景 —— 结构不变
+ *   components.css:1427 `.logdrawer__head`  头栏高度与分隔线 —— 是操作区，不是装饰
+ *   components.css:1437 `.logdrawer__title` 标题排版 —— 只删掉了它里面的徽章，字号不改
+ *   components.css:1457 `.logdrawer__actions` 按钮排布 —— 不变
+ *   components.css:1464 `.logdrawer__box`   滚动区外框与字号 —— 不变
+ *   components.css:1474 `.logdrawer__box:focus-visible` 焦点环 —— 可访问性，必须留着
+ *
+ * 值一律来自 tokens.css 的令牌；本文件不出现字面量颜色与像素。
+ * ========================================================================== */
+
+/* =========================== 日志行：一整行文本 =========================== */
+
+/* 为什么放弃 grid 三列：旧列宽是字面量（58px / 30px），想调宽度就得再写字面量；
+ * 而终端本来就是一整行文本，长行折行后续行顶格本来就是终端的行为。
+ * 等宽字体与「单一字号」落在容器上、由子元素继承 —— 不再逐个 span 挂 .mono，
+ * 那个工具类自带 --fs-sm，和「单一字号」是打架的。 */
+.logdrawer .logline {
+  display: block;
+  grid-template-columns: none; /* 显式宣告列布局作废；gap / align-items 在 block 下自动失效 */
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--fg-1);
+}
+
+/* 时间戳：保留（排查问题时它是唯一的时间锚点），只压暗；
+ * 字号不再单独降一档 —— 「单一字号」比「元信息更小」重要。 */
+.logdrawer .logline__at {
+  color: var(--fg-3);
+  font-size: var(--fs-sm);
+  margin-right: var(--sp-2); /* 以前列间距靠 grid gap，现在靠外边距 */
+}
+
+/* 通道：只是一段纯文本前缀 [sys] / [out] / [err]。
+ * 旧规则把它写成大写 + 0.04em 字距的视觉标签，这里还原成小写、零字距。 */
+.logdrawer .logline__chan {
+  color: var(--fg-3);
+  font-size: var(--fs-sm);
+  text-transform: none;
+  letter-spacing: 0;
+  margin-right: var(--sp-2);
+}
+
+.logdrawer .logline__text {
+  font-size: var(--fs-sm);
+}
+
+/* stdout 是正文，给最亮那一档；system 行没有自己的颜色时会落到上面 .logline 的 --fg-1 */
+.logdrawer .logline--stdout {
+  color: var(--fg-0);
+}
+
+/* stderr：只染文字 —— 这正是用户要的（不要色块），--danger 也只出现在字上 */
+.logdrawer .logline--stderr .logline__text,
+.logdrawer .logline--stderr .logline__chan {
+  color: var(--danger);
+}
+
+/* system：旧的用 --accent 强调蓝，等于在灰阶文本流里插了第三种颜色。
+ * 现在正文退到 --fg-1（比 stdout 稍暗），前缀与时间戳同档 --fg-3，整行还是灰阶。 */
+.logdrawer .logline--system .logline__text {
+  color: var(--fg-1);
+}
+
+.logdrawer .logline--system .logline__chan {
+  color: var(--fg-3);
+}
+
+/* \r 进度行：临时信息，退到最暗一档；顺手去掉 opacity 那层半透明
+ * （透明度会让同一行的灰度看起来和另一行不同，和「单一层级」冲突） */
+.logdrawer .logline--progress {
+  color: var(--fg-2);
+  opacity: 1;
+}
+
+.logdrawer .logline--progress .logline__text {
+  color: var(--fg-2);
+}
+
+/* =========================== 状态行（新增钩子类） ===========================
+ * 运行中 / 完成 / 失败 / 提示原来是头顶的转圈+操作名、成功失败徽章和一整块结果卡片，
+ * 现在是流里的普通行：复用 `logline logline--system` 的行结构，只多一个钩子类。
+ * 时间是这一行自己写的（op.startedAt / result.endedAt），所以时间戳语义不变。 */
+
+.logdrawer .logdrawer__note {
+  color: var(--fg-1);
+}
+
+/* 失败行整行文字走警示色，和 stderr 同一种染法。
+ * 用 (0,4,0)：比上面 system 的 (0,3,0) 高，不靠顺序也赢。 */
+.logdrawer .logline--system.logdrawer__note--fail .logline__text {
+  color: var(--danger);
+}
+
+/* =========================== 依赖变化明细 ===========================
+ * 原来是卡片里一排带底色的小徽章（added / removed / updated / bundled …），
+ * 现在是一行一个包的等宽文本，缩进一档、比正文暗一档。 */
+.logdrawer .logdrawer__change {
+  display: block;
+  padding-left: var(--sp-4); /* 缩进用令牌，不在字符串里塞空格 */
+  color: var(--fg-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  white-space: pre-wrap; /* 保留 action / name / 版本之间的对齐空格 */
+  word-break: break-word;
+}
+
+/* 「重启 DSH」是动作不是装饰：样式直接用 base.css 的 .link-btn
+ * （无边框无底色、--accent 文字、hover 下划线、focus-visible 焦点环）。
+ * 这里只补它与提示文字之间的间距，不再自定义颜色 —— 少一条能漂移的规则。 */
+.logdrawer .logdrawer__restart-btn {
+  margin-left: var(--sp-2);
+}
+
+/* =========================== 空态 =========================== */
+
+.logdrawer .logdrawer__empty {
+  color: var(--fg-2);
+  font-size: var(--fs-sm);
+}
+
+/* ============================================================================
+ * 已删除的结构：把旧规则显式压掉
+ *
+ * `.logdrawer__op`（头顶的转圈 + 操作名）与 `.logdrawer__result*` / `.change*` /
+ * `.logdrawer__nochange`（结果卡片那一整片）在 LogDrawer.tsx 里已经不再渲染。
+ * 这里仍旧显式覆盖，是因为 components.css:1447-1636 那些规则还留在原地等着：
+ * 哪天有人复用同名类名，卡片边框、色块、大写标题会突然冒回来 ——
+ * 归零比去改别人的文件便宜，也比事后 Debug 便宜。
+ *
+ * display:none 在这里是准确语义：「这个类不许再有视觉存在」。
+ * 其中 `.logdrawer .logdrawer__result.is-ok`(0,3,0) 与
+ * `.logdrawer .is-ok .logdrawer__result-title`(0,3,0) 单独列出来，是为了压过
+ * components.css:1544 / :1569 那两条同为 (0,2,0) 的修饰符规则。
+ * 其余选择器是 (0,2,0)，对旧规则的 (0,1,0) 或 (0,2,0) 都赢。
+ * ========================================================================== */
+
+.logdrawer .logdrawer__op,
+.logdrawer .logdrawer__result,
+.logdrawer .logdrawer__result.is-ok,
+.logdrawer .logdrawer__result.is-fail,
+.logdrawer .logdrawer__result-head,
+.logdrawer .logdrawer__result-title,
+.logdrawer .is-ok .logdrawer__result-title,
+.logdrawer .is-fail .logdrawer__result-title,
+.logdrawer .logdrawer__restart,
+.logdrawer .logdrawer__changes,
+.logdrawer .change,
+.logdrawer .change__act,
+.logdrawer .change__act--added,
+.logdrawer .change__act--removed,
+.logdrawer .change__act--updated,
+.logdrawer .change__act--bundled,
+.logdrawer .change__act--unbundled,
+.logdrawer .logdrawer__nochange {
+  display: none;
+}

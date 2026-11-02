@@ -1,0 +1,193 @@
+{
+  "domBase": 459,
+  "skeletonMs": 21,
+  "firstCardMs": 312,
+  "interactiveMs": 813,
+  "cardsAfterOpen": 48,
+  "domAfterOpen": 824,
+  "domAfterOpenDelta": 365,
+  "status": "共 8281 条，筛出 8281 条\n·\n目录构建于 2026-11-01\n·\n来自 npm 包 dsh-plugin-catalog\n·\n用的是本地缓存 · 拉取于 41 分钟前",
+  "footer": "显示第 1–48 个 / 共 8281 个插件",
+  "cardH": 158,
+  "rowH": 170,
+  "gridH": 352058,
+  "iconImg": 2,
+  "iconMono": 46,
+  "top48": 48,
+  "top48WithIcon": 1,
+  "iconSampleUrl": "https://raw.githubusercontent.com/DayuanJiang/next-ai-draw-io/main/packages/dsh-plugin/icon.png",
+  "iconSampleResult": "load",
+  "iconImgAfterWait": 3,
+  "iconDecoded": 3,
+  "iconMonoAfterWait": 45,
+  "scrollerFound": true,
+  "scrollHeightStart": 352283,
+  "maxScrollTop": 351485,
+  "diagBefore": {
+    "transform": "matrix(1, 0, 0, 1, 0, 0)",
+    "inlineTransform": "translateY(0px)",
+    "wrapTop": 247,
+    "wrapH": 352058,
+    "scrollRect": {
+      "top": 84,
+      "bottom": 882
+    },
+    "cardTop": 247,
+    "cardBottom": 405,
+    "cardsInDom": 48
+  },
+  "diagAfter": {
+    "transform": "matrix(1, 0, 0, 1, 0, 351050)",
+    "inlineTransform": "translateY(351050px)",
+    "wrapTop": -351237,
+    "wrapH": 352058,
+    "scrollRect": {
+      "top": 84,
+      "bottom": 882
+    },
+    "cardTop": -187,
+    "cardBottom": -29,
+    "cardsInDom": 21
+  },
+  "scrollLoopMs": 2723,
+  "steps": [
+    {
+      "i": 0,
+      "cards": 21,
+      "dom": 500,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100,
+      "transform": "translateY(351050px)",
+      "firstCardTop": -187
+    },
+    {
+      "i": 1,
+      "cards": 21,
+      "dom": 500,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100,
+      "transform": "translateY(351050px)",
+      "firstCardTop": -187
+    },
+    {
+      "i": 2,
+      "cards": 21,
+      "dom": 500,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100,
+      "transform": "translateY(351050px)",
+      "firstCardTop": -187
+    },
+    {
+      "i": 3,
+      "cards": 21,
+      "dom": 500,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100,
+      "transform": "translateY(351050px)",
+      "firstCardTop": -187
+    },
+    {
+      "i": 4,
+      "cards": 21,
+      "dom": 500,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100,
+      "transform": "translateY(351050px)",
+      "firstCardTop": -187
+    },
+    {
+      "i": 5,
+      "cards": 21,
+      "dom": 500,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100,
+      "transform": "translateY(351050px)",
+      "firstCardTop": -187
+    },
+    {
+      "i": 6,
+      "cards": 21,
+      "dom": 500,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100,
+      "transform": "translateY(351050px)",
+      "firstCardTop": -187
+    },
+    {
+      "i": 7,
+      "cards": 21,
+      "dom": 500,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100,
+      "transform": "translateY(351050px)",
+      "firstCardTop": -187
+    },
+    {
+      "i": 8,
+      "cards": 21,
+      "dom": 500,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100,
+      "transform": "translateY(351050px)",
+      "firstCardTop": -187
+    },
+    {
+      "i": 9,
+      "cards": 21,
+      "dom": 500,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100,
+      "transform": "translateY(351050px)",
+      "firstCardTop": -187
+    },
+    {
+      "i": 10,
+      "cards": 21,
+      "dom": 500,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100,
+      "transform": "translateY(351050px)",
+      "firstCardTop": -187
+    },
+    {
+      "i": 11,
+      "cards": 21,
+      "dom": 500,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100,
+      "transform": "translateY(351050px)",
+      "firstCardTop": -187
+    }
+  ],
+  "domEnd": 500,
+  "domGrowth": -324,
+  "maxCards": 48,
+  "maxDom": 824,
+  "blankSteps": [],
+  "reachedEnd": true,
+  "cardsBackTop": 24,
+  "searchMs": 243,
+  "searchFooter": "显示第 1–48 个 / 共 9 个插件",
+  "searchCards": 9,
+  "searchClearMs": 231,
+  "categoryMs": 27,
+  "categoryLabel": "UI 增强（1628）",
+  "categoryFooter": "显示第 1–48 个 / 共 1628 个插件",
+  "categoryCards": 48,
+  "categoryDom": 824,
+  "domFinal": 824,
+  "cardsFinal": 48
+}

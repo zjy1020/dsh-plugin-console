@@ -1,0 +1,3 @@
+
+[窗口] 已加载窗口图标： D:\项目\DSH\deepseekharness插件台\resources\icon.ico { width: 256, height: 256 }
+[托盘] 已创建系统托盘： D:\项目\DSH\deepseekharness插件台\resources\tray.ico

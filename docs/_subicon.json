@@ -1,0 +1,82 @@
+{
+  "total": 8281,
+  "top48": 48,
+  "top48SubForm": 2,
+  "byStars48SubForm": 26,
+  "byStars48Declared": 1,
+  "samples": [
+    {
+      "name": "archify#integrations/deepseek-harness",
+      "repo": "tt-a1i/archify",
+      "sub": "integrations/deepseek-harness",
+      "rootHit": null,
+      "subHit": null
+    },
+    {
+      "name": "hindsight#coding-agents",
+      "repo": "vectorize-io/hindsight",
+      "sub": "coding-agents",
+      "rootHit": null,
+      "subHit": null
+    },
+    {
+      "name": "OpenViking#examples/dsh-memory-plugin",
+      "repo": "volcengine/OpenViking",
+      "sub": "examples/dsh-memory-plugin",
+      "rootHit": null,
+      "subHit": "examples/dsh-memory-plugin/icon.svg"
+    },
+    {
+      "name": "WeKnora#dsh-weknora",
+      "repo": "Tencent/WeKnora",
+      "sub": "dsh-weknora",
+      "rootHit": null,
+      "subHit": null
+    },
+    {
+      "name": "MemOS#memos-local-plugin",
+      "repo": "MemTensor/MemOS",
+      "sub": "memos-local-plugin",
+      "rootHit": null,
+      "subHit": null
+    },
+    {
+      "name": "dsh-web#packages/dsh-task-board",
+      "repo": "zhu1090093659/dsh-web",
+      "sub": "packages/dsh-task-board",
+      "rootHit": null,
+      "subHit": "packages/dsh-task-board/icon.svg"
+    },
+    {
+      "name": "dsh-web#packages/dsh-web-all",
+      "repo": "zhu1090093659/dsh-web",
+      "sub": "packages/dsh-web-all",
+      "rootHit": null,
+      "subHit": "packages/dsh-web-all/icon.svg"
+    },
+    {
+      "name": "BrowserSkill#dsh-plugin-browserskill",
+      "repo": "Tencent/BrowserSkill",
+      "sub": "dsh-plugin-browserskill",
+      "rootHit": null,
+      "subHit": null
+    },
+    {
+      "name": "dsh-web#packages/dsh-skill-explorer",
+      "repo": "zhu1090093659/dsh-web",
+      "sub": "packages/dsh-skill-explorer",
+      "rootHit": null,
+      "subHit": "packages/dsh-skill-explorer/icon.svg"
+    },
+    {
+      "name": "dsh-web#packages/dsh-git-graph",
+      "repo": "zhu1090093659/dsh-web",
+      "sub": "packages/dsh-git-graph",
+      "rootHit": null,
+      "subHit": "packages/dsh-git-graph/icon.svg"
+    }
+  ],
+  "sampled": 10,
+  "subHits": 5,
+  "rootHits": 0
+}

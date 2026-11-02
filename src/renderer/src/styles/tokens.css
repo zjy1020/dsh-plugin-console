@@ -1,0 +1,578 @@
+/* =============================================================================
+ * tokens.css —— 唯一的变量层。
+ *
+ * 规矩：任何组件样式只允许引用本文件的变量，禁止写死颜色/时长/圆角。
+ * 色板：灰阶为主 + 单一强调色（冷蓝 --accent）。
+ *
+ * v3 起新增玻璃/材质层（`--p-*` 色板、`--gl-*` 材质、`--sb-*` 侧栏节奏、
+ * `--r-*` 半径阶梯、`--t-*` 时长、`--z-*` 层级）—— 完整规格见 docs/design-v3.md。
+ * 旧变量（--bg-* / --fg-* / --accent* / --dur-* / --radius-*）**全部保留**，
+ * 17 个组件仍在引用它们；v3 只是加层，不是替换。
+ * ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* ---- 背景层次（越靠上越亮，用于在深色里表达层级而不是靠阴影） ---- */
+  --bg-0: #0a0c11; /* 应用底 */
+  --bg-1: #10131a; /* 面板 */
+  --bg-2: #161a23; /* 抬起的块 */
+  --bg-3: #1d222d; /* 最高一层 / 悬浮 */
+  --bg-hover: #1a1f29;
+  --bg-active: #212836;
+  --bg-sunken: #070910; /* 日志、代码块等凹陷区 */
+
+  /* ---- 前景 ---- */
+  --fg-0: #e8ecf4; /* 主文字 */
+  --fg-1: #a5aec0; /* 次要文字 */
+  --fg-2: #6d7788; /* 弱化文字 / 元信息 */
+  --fg-3: #4a5260; /* 禁用文字 */
+  --fg-inverse: #06080d;
+
+  /* ---- 强调色：只有一个 ---- */
+  --accent: #4c9aff;
+  --accent-hi: #6fb0ff;
+  --accent-dim: #2f6dbb;
+  --accent-fg: #ffffff;
+  --accent-soft: rgba(76, 154, 255, 0.14);
+  --accent-line: rgba(76, 154, 255, 0.42);
+
+  /* ---- 语义色 ---- */
+  --danger: #ff5d5d;
+  --danger-hi: #ff8080;
+  --danger-soft: rgba(255, 93, 93, 0.14);
+  --danger-line: rgba(255, 93, 93, 0.42);
+
+  --warn: #eeb04a;
+  --warn-soft: rgba(238, 176, 74, 0.14);
+  --warn-line: rgba(238, 176, 74, 0.42);
+
+  --ok: #45cf8e;
+  --ok-soft: rgba(69, 207, 142, 0.14);
+  --ok-line: rgba(69, 207, 142, 0.42);
+
+  --info: var(--accent);
+  --info-soft: var(--accent-soft);
+  --info-line: var(--accent-line);
+
+  /* ---- 描边 ---- */
+  --border: #232935;
+  --border-soft: #1a1f28;
+  --border-strong: #333c4d;
+  --border-focus: var(--accent);
+
+  /* ---- 阴影（只给浮层用，不给卡片用） ---- */
+  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --ring: 0 0 0 2px rgba(76, 154, 255, 0.45);
+  --ring-danger: 0 0 0 2px rgba(255, 93, 93, 0.45);
+
+  /* ---- 遮罩（弹窗后面压暗用） ---- */
+  --scrim: rgba(6, 8, 13, 0.62);
+
+  /* ---- 圆角：克制，工具就该是方的 ---- */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
+
+  /* ---- 间距 ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* ---- 动效 ---- */
+  --dur-instant: 70ms;
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 300ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-linear: linear;
+
+  /* ---- 字体 ---- */
+  --font-ui: "Segoe UI Variable Display", "Segoe UI", system-ui, "Microsoft YaHei UI",
+    "Microsoft YaHei", sans-serif;
+  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+
+  --fs-xxs: 10.5px;
+  --fs-xs: 11.5px;
+  --fs-sm: 12.5px;
+  --fs-md: 13px;
+  --fs-lg: 15px;
+  --fs-xl: 18px;
+
+  /* ---- 布局骨架 ---- */
+  --titlebar-h: 38px;
+  --topbar-h: 46px;
+  --sidebar-w: 268px;
+  --detail-w: 400px;
+  --row-h: 52px;
+  --log-h: 250px;
+  --toast-w: 320px;
+
+  /* ---- 层叠 ---- */
+  --z-sticky: 10;
+  --z-drawer: 40;
+  --z-dialog: 60;
+  --z-toast: 80;
+
+  /* ---- 滚动条 ---- */
+  --scrollbar-thumb: #2a3240;
+  --scrollbar-thumb-hover: #3a4456;
+  --scrollbar-track: transparent;
+}
+
+/* =========================== 浅色主题 =========================== */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-0: #f4f5f7;
+  --bg-1: #ffffff;
+  --bg-2: #f7f8fa;
+  --bg-3: #ffffff;
+  --bg-hover: #eef0f4;
+  --bg-active: #e6eaf1;
+  --bg-sunken: #eef0f4;
+
+  --fg-0: #14171d;
+  --fg-1: #4a5260;
+  --fg-2: #767f8d;
+  --fg-3: #a3abb8;
+  --fg-inverse: #ffffff;
+
+  --accent: #1f6feb;
+  --accent-hi: #1a5fd0;
+  --accent-dim: #9dc4f5;
+  --accent-fg: #ffffff;
+  --accent-soft: rgba(31, 111, 235, 0.1);
+  --accent-line: rgba(31, 111, 235, 0.4);
+
+  --danger: #d32f2f;
+  --danger-hi: #b71c1c;
+  --danger-soft: rgba(211, 47, 47, 0.1);
+  --danger-line: rgba(211, 47, 47, 0.4);
+
+  --warn: #9a6700;
+  --warn-soft: rgba(154, 103, 0, 0.1);
+  --warn-line: rgba(154, 103, 0, 0.4);
+
+  --ok: #1a7f4b;
+  --ok-soft: rgba(26, 127, 75, 0.1);
+  --ok-line: rgba(26, 127, 75, 0.4);
+
+  --border: #dfe2e8;
+  --border-soft: #e9ebf0;
+  --border-strong: #c6cbd4;
+
+  --shadow-1: 0 2px 6px rgba(20, 23, 29, 0.08);
+  --shadow-2: 0 12px 28px rgba(20, 23, 29, 0.16);
+  --ring: 0 0 0 2px rgba(31, 111, 235, 0.35);
+  --ring-danger: 0 0 0 2px rgba(211, 47, 47, 0.35);
+
+  --scrim: rgba(20, 23, 29, 0.32);
+
+  --scrollbar-thumb: #c8ccd4;
+  --scrollbar-thumb-hover: #aeb4bf;
+}
+
+/* =========================== 降低动效 =========================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-instant: 0ms;
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* =============================================================================
+ * v3 材质层 —— 悬浮侧栏 / 壁纸 / 玻璃
+ * 规格来源：docs/design-v3.md（§1 色板·字体·间距圆角层级·材质四层，§2 动效）
+ * ========================================================================== */
+
+:root {
+  /* ---- 1.1 色板：玻璃母色 / 抬升 / 前景 / 品牌 / 辅助 / 注意 ---- */
+  --p-ink: #0c0e16; /* 玻璃母色（HSL 232°，不是纯黑） */
+  --p-slate: #171b26; /* 抬升与衬底基色 */
+  --p-mist: #e8ecf4; /* 前景主色（禁止用纯白做正文） */
+  --p-brand: #4c9aff; /* 品牌冷蓝 —— 只允许出现在六处白名单 */
+  --p-aurora: #7c6cf0; /* 辅助蓝紫：主题身份、diff 新增位、滑块内折射 */
+  --p-ember: #e0a45c; /* 注意色：待处理 / 可更新 / 缺口刻度 / 未测延迟 */
+
+  /* 环境色：壁纸自动适配算出来的「这张图的氛围」。
+   * 默认值就是原先写死的遮罩色，所以不带壁纸时观感一字不变；
+   * 一旦用户导入壁纸并开了自动适配，遮罩会带上这张图的色调。 */
+  --p-ambient: #0c0e16;
+
+  /* 品牌色白名单里用到的派生透明度（不要另造品牌色）。
+   *
+   * 这四条**刻意用 color-mix 从 --p-brand 推导**而不是写死 rgba：
+   * 主题系统与壁纸自动适配都会覆盖 --p-brand，只要派生色是独立字面量，
+   * 换品牌色时就会剩下一堆旧蓝色的浅色底（选中项背景、滑块折射、角标）。
+   * 自定义属性在计算值阶段才解析，所以这里引用同一个 :root 里的 --p-brand 是合法的。
+   * 浅色主题不再重复定义它们 —— 它只改 --p-brand，派生色自动跟着走。 */
+  --p-brand-06: color-mix(in srgb, var(--p-brand) 6%, transparent);
+  --p-brand-08: color-mix(in srgb, var(--p-brand) 8%, transparent);
+  --p-brand-10: color-mix(in srgb, var(--p-brand) 10%, transparent);
+  --p-brand-soft: color-mix(in srgb, var(--p-brand) 16%, transparent);
+
+  /* ---- 1.2 字体：Windows 上一定拿得到，不引 web font ---- */
+  --font-ui-display: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI",
+    system-ui, "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  --font-num: "Cascadia Mono", Consolas, "Microsoft YaHei UI", monospace;
+
+  --fs-caption: clamp(10.5px, 0.6rem + 0.09vw, 11.5px);
+  --fs-meta2: clamp(11.5px, 0.68rem + 0.09vw, 12.5px);
+  --fs-body2: clamp(12.5px, 0.74rem + 0.1vw, 13.5px);
+  --fs-num: clamp(13px, 0.78rem + 0.1vw, 14.5px);
+  --fs-title: clamp(14px, 0.82rem + 0.16vw, 16px);
+  --fs-readout: clamp(17px, 1rem + 0.28vw, 21px); /* 唯一的重量级读数：延迟 / diff 位数 */
+  --fs-display: clamp(20px, 1.24rem + 0.36vw, 26px);
+
+  /* ---- 1.3 间距 / 侧栏节奏 / 圆角 / 层级 ---- */
+  /* 4px 基准，数字档 = 4px × N；带 h 的是半档（N.5），hair 是半档里的最小值。
+   *
+   * 这套 --sp-* 一度只留了 hair / 2h / 3h / 12 四个，--sp-1..--sp-6 全丢，
+   * 于是所有 gap / padding 里的 var(--sp-2) 都成了无效声明被静默丢弃，
+   * 计算值回落成 normal / 0 —— 版面看着「只是紧一点」，所以很久没被发现。
+   *
+   * 同名数字档直接别名到 v1 的 --space-*，不要各写一遍字面量：
+   * 两套令牌并存是历史遗留，但值必须永远一致，否则迟早会在某个组件上错开 4px。 */
+  --sp-1: var(--space-1);
+  --sp-2: var(--space-2);
+  --sp-3: var(--space-3);
+  --sp-4: var(--space-4);
+  --sp-5: var(--space-5);
+  --sp-6: var(--space-6);
+  --sp-8: var(--space-8);
+  /* 以下三个 --space-* 里没有对应的档位，只能写值 */
+  --sp-hair: 2px;
+  --sp-2h: 10px;
+  --sp-3h: 14px;
+  --sp-12: 48px;
+
+  --sb-margin: 10px; /* 悬浮面板到窗口边缘 */
+  --sb-w-expanded: 264px;
+  --sb-w-collapsed: 64px;
+  --sb-pad-x: 12px;
+  /* 侧边栏圆角单独一个变量：设置中心有「侧边栏圆角」滑块，得有个东西给它改。
+   * 不要直接改 --r-lg —— 那是按钮、卡片、对话框共用的，拖一下整页都变。 */
+  --sb-radius: var(--r-lg);
+  --sb-item-h: 34px;
+  --sb-item-h-collapsed: 40px;
+  --sb-icon: 16px;
+  --sb-icon-collapsed: 18px;
+  --sb-gap-brand-quick: 8px;
+  --sb-gap-quick-nav: 16px;
+  --sb-gap-nav-status: 16px;
+  --sb-gap-status-user: 24px; /* 用户区与主导航之间的强制留白 */
+  --sb-group-head-h: 22px;
+  --sb-group-gap: 10px;
+
+  --r-hair: 1px;
+  --r-xs: 3px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-full: 999px;
+
+  --z-wallpaper: 0;
+  --z-content: 5;
+  --z-shell: 10;
+  --z-slider: 11; /* 滑块在导航项之下 */
+  --z-item: 12;
+  --z-panel-edge: 14; /* 外缘折射环在内容之上（只画在边缘 24px 内） */
+  --z-drag: 50;
+
+  /* ---- 1.5 材质四层（深色默认） ---- */
+  --gl-veil-color: var(--p-ambient);
+  --gl-veil-alpha: 0.34;
+  --gl-noise: 0.02; /* 〔待 ref-notes 校准〕 */
+
+  --gl-panel-color: #0c0e16;
+  --gl-panel-alpha: 0.52;
+  --gl-panel-blur: 30px; /* 〔待 ref-notes 校准〕 */
+  --gl-panel-blur-min: 18px; /* 〔待 ref-notes 校准〕 */
+  --gl-panel-sat: 1.45; /* 〔待 ref-notes 校准〕 */
+  --gl-panel-lum: 0.94; /* 〔待 ref-notes 校准〕 */
+  --gl-panel-edge: rgba(255, 255, 255, 0.1);
+  --gl-panel-edge-soft: rgba(255, 255, 255, 0.05);
+  --gl-panel-inner: rgba(255, 255, 255, 0.045);
+  --gl-panel-refract: rgba(255, 255, 255, 0.12);
+
+  --gl-bed-color: #12151c;
+  --gl-bed-alpha: 0.72;
+  --gl-bed-blur: 8px;
+  --gl-bed-edge: rgba(255, 255, 255, 0.07);
+
+  /* 内容面板（主区 / 详情）的不透明度与模糊 —— 用户可调，见设置中心「内容面板」。
+   * 这里给的是「跟随主题」的推导值，正是可调化之前写死在 glass.css 里的那两个数：
+   * 不透明度 = 衬底 alpha + 14%（深色 0.86 / 浅色 0.94），模糊 = 面板模糊 × 60%
+   * （深色 18px / 浅色 15.6px）。因为引用的是主题变量，切深浅/换主题时会自己跟着变。 */
+  --panel-alpha: calc(var(--gl-bed-alpha) + 0.14);
+  --panel-blur: calc(var(--gl-panel-blur) * 0.6);
+
+  --gl-hl-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.02) 42%,
+    transparent 62%
+  );
+  --gl-hl-edge: rgba(255, 255, 255, 0.22);
+  --gl-hl-peak: 0.14; /* 〔待 ref-notes 校准〕 */
+  --gl-hl-dur: 320ms; /* 高光寿命硬上限 */
+
+  --gl-sh-panel: 0 18px 48px -12px rgba(4, 6, 12, 0.62), 0 2px 8px rgba(4, 6, 12, 0.34);
+  --gl-sh-float: 0 12px 32px -8px rgba(4, 6, 12, 0.58);
+  --gl-sh-lift: 0 4px 12px -4px rgba(4, 6, 12, 0.45);
+  --gl-blur-count: 2;
+
+  /* ---- 2.1 时长与缓动 ---- */
+  --t-1: 90ms;
+  --t-2: 140ms;
+  --t-3: 200ms;
+  --t-4: 320ms;
+  --t-5: 520ms;
+  --t-6: 900ms;
+
+  --e-standard: cubic-bezier(0.2, 0, 0, 1);
+  --e-decel: cubic-bezier(0.1, 0.9, 0.2, 1);
+  --e-accel: cubic-bezier(0.7, 0, 1, 0.5);
+  --e-glass: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* =========================== v3 浅色材质 =========================== */
+:root[data-theme="light"] {
+  --p-ink: #eff2f7;
+  --p-slate: #e2e7f0;
+  --p-mist: #12151c;
+  --p-brand: #1f6feb;
+  --p-aurora: #6b5be0;
+  --p-ember: #a96a18;
+  --p-ambient: #eff2f7; /* 默认等于浅色遮罩色，见 :root 里的说明 */
+
+  /* 注意：这里**故意不再重复定义** --p-brand-06/08/10/soft。
+   * 它们在 :root 里是从 --p-brand 推导出来的，浅色主题只换 --p-brand 就够了。 */
+
+  --gl-veil-color: var(--p-ambient);
+  --gl-veil-alpha: 0.16;
+  --gl-noise: 0.014; /* 〔待 ref-notes 校准〕 */
+
+  --gl-panel-color: #eff2f7;
+  --gl-panel-alpha: 0.46;
+  --gl-panel-blur: 26px;
+  --gl-panel-sat: 1.3; /* 〔待 ref-notes 校准〕 */
+  --gl-panel-lum: 1.03; /* 〔待 ref-notes 校准〕 */
+  --gl-panel-edge: rgba(255, 255, 255, 0.7);
+  --gl-panel-edge-soft: rgba(255, 255, 255, 0.38);
+  --gl-panel-inner: rgba(255, 255, 255, 0.55);
+  --gl-panel-refract: rgba(255, 255, 255, 0.62);
+
+  --gl-bed-color: #f6f8fc;
+  --gl-bed-alpha: 0.8;
+  --gl-bed-blur: 6px;
+  --gl-bed-edge: rgba(18, 21, 28, 0.1);
+
+  --gl-hl-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.66) 0%,
+    rgba(255, 255, 255, 0.12) 42%,
+    transparent 62%
+  );
+  --gl-hl-edge: rgba(255, 255, 255, 0.86);
+  --gl-hl-peak: 0.3; /* 〔待 ref-notes 校准〕 */
+
+  --gl-sh-panel: 0 18px 44px -14px rgba(24, 30, 44, 0.28), 0 2px 6px rgba(24, 30, 44, 0.12);
+  --gl-sh-float: 0 12px 30px -10px rgba(24, 30, 44, 0.24);
+  --gl-sh-lift: 0 4px 10px -4px rgba(24, 30, 44, 0.16);
+}
+
+/* =============================================================================
+ * 降级开关
+ * - data-glass="off"：一键回落到旧实色观感。三个来源会打开它 —— 用户的「降低透明度」
+ *   开关、动效设为「关闭装饰性」（省 GPU）、以及系统辅助功能的 prefers-reduced-transparency
+ *   （系统那条由 App.tsx 的 useSystemReducedTransparency 读出来，见下一段的说明）。
+ * - prefers-reduced-transparency：CSS 侧的同一件事。保留它是因为首帧在 JS 跑起来之前
+ *   就要对，不能等 React。
+ * - forced-colors：系统高对比模式下玻璃与外缘折射环整体关闭。
+ *
+ * 注意：这几个块只改**变量**，真正的背景色/模糊写在 glass.css 里由 var() 消费。
+ * 如果哪天有人把 --gl-panel-alpha / --gl-panel-blur 改用内联 style 写死在
+ * documentElement 上，这几个降级块会整体失效（内联压样式表）—— App.tsx 那边
+ * 因此专门在玻璃关掉时把这两个内联变量摘掉，而不是写个更大的数。
+ * ========================================================================== */
+
+:root[data-glass="off"] {
+  --gl-veil-alpha: 0;
+  --gl-panel-alpha: 1;
+  --gl-panel-blur: 0px;
+  --gl-panel-sat: 1;
+  --gl-panel-lum: 1;
+  --gl-panel-refract: transparent;
+  --gl-panel-inner: transparent;
+  --gl-hl-peak: 0;
+  --gl-bed-alpha: 1;
+  --gl-bed-blur: 0px;
+  --gl-noise: 0;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --gl-veil-alpha: 0;
+    --gl-panel-alpha: 1;
+    --gl-panel-blur: 0px;
+    --gl-panel-refract: transparent;
+    --gl-hl-peak: 0;
+    --gl-bed-alpha: 1;
+    --gl-bed-blur: 0px;
+  }
+}
+
+@media (forced-colors: active) {
+  :root {
+    --gl-veil-alpha: 0;
+    --gl-panel-alpha: 1;
+    --gl-panel-blur: 0px;
+    --gl-panel-edge: CanvasText;
+    --gl-panel-edge-soft: CanvasText;
+    --gl-panel-inner: transparent;
+    --gl-panel-refract: transparent;
+    --gl-hl-peak: 0;
+    --gl-bed-alpha: 1;
+    --gl-bed-blur: 0px;
+    --gl-sh-panel: none;
+    --gl-sh-float: none;
+    --gl-sh-lift: none;
+  }
+}
+
+/* =============================================================================
+ * 用户档位：动效强度（App.tsx 写 data-motion="full|reduced|off"）
+ *
+ * 这里刻意把系统级的 prefers-reduced-motion 当成「下限」而不是「另一条路」：
+ * 两者用同一套后果（压短时长、掐掉循环动画），用户选的档位只能让它更安静，
+ * 不能让它更吵。所以 off 的效果是 prefers-reduced-motion 的超集。
+ *
+ * 注意有两套时长 token 在同时服役：旧的 --dur-* 与 v3 的 --t-1..6，
+ * 两套都要改，只改一套会留下一半还在慢慢动的组件。
+ * ========================================================================== */
+
+:root[data-motion="reduced"] {
+  --dur-instant: 40ms;
+  --dur-fast: 70ms;
+  --dur-base: 100ms;
+  --dur-slow: 140ms;
+
+  --t-1: 60ms;
+  --t-2: 90ms;
+  --t-3: 110ms;
+  --t-4: 140ms;
+  --t-5: 200ms;
+  --t-6: 320ms;
+}
+
+/* 简化档只压时长，不改颜色 —— 颜色与透明度的淡入淡出是人能跟得上的变化 */
+:root[data-motion="reduced"] *,
+:root[data-motion="reduced"] *::before,
+:root[data-motion="reduced"] *::after {
+  animation-duration: 120ms !important;
+  animation-iteration-count: 1 !important;
+  /* 呼吸点 / 骨架微光是「一直动」，简化档直接不跑 */
+  animation-name: none !important;
+}
+
+/* 进度指示的豁免。
+ *
+ * 上面那条 `animation-name: none !important` 会连带把「正在转的加载圈」冻住 ——
+ * 那是唯一在告诉用户「程序在跑，别关窗口」的东西，冻住它等于撒谎。
+ * 所以用更高特异性（多一个类）+ !important 把这两个捞回来，并且放慢一档：
+ * 简化档要的是「别晃眼」，不是「别告诉我它在干活」。
+ *
+ * `.spinner` 用 spin 关键帧（base.css），`.dot--loading` 用 dot-spin（glass.css），
+ * 名字不同，只能分开写。 */
+:root[data-motion="reduced"] .spinner,
+:root[data-motion="off"] .spinner {
+  animation: spin 1100ms linear infinite !important;
+}
+
+:root[data-motion="reduced"] .dot--loading,
+:root[data-motion="off"] .dot--loading {
+  animation: dot-spin 1100ms linear infinite !important;
+}
+
+:root[data-motion="off"] {
+  --dur-instant: 0ms;
+  --dur-fast: 0ms;
+  --dur-base: 0ms;
+  --dur-slow: 0ms;
+
+  --t-1: 1ms;
+  --t-2: 1ms;
+  --t-3: 1ms;
+  --t-4: 1ms;
+  --t-5: 1ms;
+  --t-6: 1ms;
+}
+
+:root[data-motion="off"] *,
+:root[data-motion="off"] *::before,
+:root[data-motion="off"] *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* =============================================================================
+ * 用户档位：增强对比度（App.tsx 写 data-contrast="high"）
+ *
+ * 做两件事：①把三档次要文字全部往主文字方向推（原来 fg-2/fg-3 在玻璃上
+ * 会掉到 4:1 以下）②把玻璃边缘与衬底压实，让面板边界不靠模糊也能看清。
+ * 不去动 --p-brand —— 品牌色是对比度检查里已经过硬的一项。
+ * ========================================================================== */
+
+:root[data-contrast="high"] {
+  --fg-1: #c5cddb;
+  --fg-2: #9aa4b4;
+  --fg-3: #78828f;
+
+  --gl-panel-edge: rgba(255, 255, 255, 0.24);
+  --gl-panel-edge-soft: rgba(255, 255, 255, 0.14);
+  --gl-panel-inner: rgba(255, 255, 255, 0.08);
+  --gl-bed-alpha: 0.9;
+  --gl-noise: 0;
+}
+
+:root[data-contrast="high"][data-theme="light"] {
+  --fg-1: #333b48;
+  --fg-2: #4d5563;
+  --fg-3: #6b7382;
+
+  --gl-panel-edge: rgba(0, 0, 0, 0.26);
+  --gl-panel-edge-soft: rgba(0, 0, 0, 0.14);
+  --gl-panel-inner: rgba(255, 255, 255, 0.7);
+  --gl-bed-alpha: 0.94;
+  --gl-noise: 0;
+}
+
+/* 关掉玻璃时「增强对比度」的衬底压到不透明，否则玻璃没了、对比度又没补上 */
+:root[data-contrast="high"][data-glass="off"] {
+  --gl-bed-alpha: 1;
+}

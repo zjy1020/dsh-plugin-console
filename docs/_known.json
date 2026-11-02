@@ -1,0 +1,366 @@
+{
+  "total": 8281,
+  "rows": [
+    {
+      "name": "dsh-effort-slider-universal",
+      "found": true,
+      "repo": "AkiNoYo-desu/dsh-effort-slider-universal",
+      "declared": "https://raw.githubusercontent.com/AkiNoYo-desu/dsh-effort-slider-universal/main/assets/icon-180.png",
+      "url": "https://github.com/AkiNoYo-desu/dsh-effort-slider-universal",
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "load",
+          "ms": 706
+        }
+      ],
+      "hit": "assets/icon-180.png"
+    },
+    {
+      "name": "dsh-inline-edit",
+      "found": true,
+      "repo": "maxy1817/dsh-inline-edit",
+      "declared": null,
+      "url": "https://github.com/maxy1817/dsh-inline-edit",
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "load",
+          "ms": 623
+        }
+      ],
+      "hit": "assets/icon-180.png"
+    },
+    {
+      "name": "dsh-folder-launcher",
+      "found": true,
+      "repo": "snnnnke/dsh-folder-launcher",
+      "declared": null,
+      "url": "https://github.com/snnnnke/dsh-folder-launcher",
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 700
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 657
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 666
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 679
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 717
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 657
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 586
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 649
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "load",
+          "ms": 662
+        }
+      ],
+      "hit": "assets/icon.svg"
+    },
+    {
+      "name": "dsh-session-inbox",
+      "found": true,
+      "repo": "Tracest/dsh-session-inbox",
+      "declared": null,
+      "url": "https://github.com/Tracest/dsh-session-inbox",
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 596
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 1612
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 620
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 658
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 668
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 1141
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 593
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 1052
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "load",
+          "ms": 663
+        }
+      ],
+      "hit": "assets/icon.svg"
+    },
+    {
+      "name": "dsh-plugin-workspace-split",
+      "found": true,
+      "repo": "byf1999/dsh-plugin-workspace-split",
+      "declared": null,
+      "url": "https://github.com/byf1999/dsh-plugin-workspace-split",
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 2
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 1
+        }
+      ],
+      "hit": null
+    },
+    {
+      "name": "dsh-pages",
+      "found": true,
+      "repo": "OrderG-X/dsh-pages",
+      "declared": null,
+      "url": "https://github.com/OrderG-X/dsh-pages",
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 593
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 617
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 676
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 723
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 669
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 659
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 583
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 649
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 633
+        }
+      ],
+      "hit": null
+    },
+    {
+      "name": "dsh-prompt-library",
+      "found": true,
+      "repo": "JianhangLy/dsh-prompt-library",
+      "declared": null,
+      "url": "https://github.com/JianhangLy/dsh-prompt-library",
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 732
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 712
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 588
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 738
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 662
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 594
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 722
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 742
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 665
+        }
+      ],
+      "hit": null
+    },
+    {
+      "name": "dsh-model-router",
+      "found": true,
+      "repo": "Alice-Marx/dsh-model-router",
+      "declared": null,
+      "url": "https://github.com/Alice-Marx/dsh-model-router",
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 668
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 724
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 637
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 690
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 862
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 795
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 612
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 605
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 747
+        }
+      ],
+      "hit": null
+    }
+  ],
+  "hits": 4
+}

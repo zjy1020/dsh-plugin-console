@@ -1,0 +1,1393 @@
+/* =============================================================================
+ * glass.css —— v3 外壳：壁纸层 + 悬浮亚克力侧栏 + 缝隙刻度 + 玻璃滑块
+ *
+ * 规格来源：docs/design-v3.md
+ *   §1.3 间距/圆角/层级  §1.4 版式线框  §1.5 材质四层
+ *   §2.3 状态点六态     §2.4 玻璃滑块   §3.7 导航项  §3.9 缝隙刻度  §3.10 状态卡
+ *
+ * 只引用 tokens.css 的变量，不写死颜色/时长/圆角。
+ * 旧组件（.sidebar__* / .app__*）仍在这份文件之外，逐步替换。
+ * ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+ * L0 背景层：壁纸 + 全局遮罩 + 噪点
+ *
+ * 三条硬规则（§0）：
+ * 1. 壁纸层永远 pointer-events:none —— 直接删掉「点壁纸切换」这类设计；
+ * 2. 遮罩 alpha 有下限（深 ≥0.28 / 浅 ≥0.16），保证文字对比不被壁纸打穿；
+ * 3. 噪点不是装饰，是防色带（壁纸大面积渐变在没有噪点时会出现可见的条带）。
+ * ------------------------------------------------------------------------ */
+
+.wp-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-wallpaper);
+  pointer-events: none;
+  overflow: hidden;
+  background: var(--bg-0);
+}
+
+.wp-layer__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* 单张图两层（旧的在下、新的在上）交叉淡化；不闪白是因为下层始终不透明 */
+  transition: opacity var(--t-6) var(--e-standard);
+}
+
+.wp-layer__img--out {
+  opacity: 0;
+}
+
+.wp-layer__veil {
+  position: absolute;
+  inset: 0;
+  background: var(--gl-veil-color);
+  opacity: var(--gl-veil-alpha);
+  transition: opacity var(--t-5) var(--e-standard);
+}
+
+.wp-layer__noise {
+  position: absolute;
+  inset: 0;
+  opacity: var(--gl-noise);
+  /* 内联 SVG feTurbulence：不需要任何图片文件，也不会被 CSP 的 img-src 拦 */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+  background-repeat: repeat;
+  mix-blend-mode: overlay;
+}
+
+/* 没有壁纸时不留空洞：给一个与母色同族的静态底，避免「忘了设壁纸」看起来像坏了 */
+.wp-layer--none .wp-layer__veil {
+  opacity: calc(var(--gl-veil-alpha) + 0.16);
+}
+
+/* ---------------------------------------------------------------------------
+ * 悬浮侧栏面板（.sb）
+ *
+ * 形态要点：不贴屏幕最左边，四周留 --sb-margin；16px 圆角；半透明 + 背景模糊；
+ * 细边框 + 内壁反光 + 外缘折射环；宽而柔和的阴影（要「漂浮」不是「钉住」）。
+ * ------------------------------------------------------------------------ */
+
+.sb {
+  position: fixed;
+  left: var(--sb-margin);
+  top: calc(var(--titlebar-h) + var(--sb-margin));
+  bottom: var(--sb-margin);
+  width: var(--sb-w-expanded);
+  z-index: var(--z-shell);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: var(--sp-2) 0;
+  border-radius: var(--sb-radius);
+  border: 1px solid var(--gl-panel-edge);
+  background: color-mix(in srgb, var(--gl-panel-color) calc(var(--gl-panel-alpha) * 100%), transparent);
+  backdrop-filter: blur(var(--gl-panel-blur)) saturate(var(--gl-panel-sat));
+  -webkit-backdrop-filter: blur(var(--gl-panel-blur)) saturate(var(--gl-panel-sat));
+  box-shadow: var(--gl-sh-panel);
+  transition:
+    width var(--t-2) var(--e-standard),
+    background-color var(--t-5) var(--e-standard),
+    border-color var(--t-5) var(--e-standard),
+    backdrop-filter var(--t-5) var(--e-standard);
+}
+
+/* 内壁 1px 反光：用 inset box-shadow 而不是额外元素，避免多一层合成 */
+.sb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 var(--gl-panel-inner);
+  pointer-events: none;
+}
+
+/* 外缘折射环：只画在面板边缘 24px 内，绝不覆盖任何文字（z 高于内容但只占边缘） */
+.sb__edge {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  z-index: var(--z-panel-edge);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--t-2) var(--e-standard);
+  box-shadow:
+    inset 0 0 24px -6px var(--gl-panel-refract),
+    inset 0 1px 0 0 var(--gl-hl-edge);
+}
+
+.sb:hover .sb__edge {
+  opacity: 0.55;
+}
+
+.sb--collapsed {
+  width: var(--sb-w-collapsed);
+}
+
+.sb--collapsed .sb__edge {
+  border-radius: inherit;
+  inset: -1px;
+}
+
+/* ---- 顶部品牌区 ---- */
+
+.sb__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2h);
+  height: 52px;
+  padding: 0 var(--sb-pad-x);
+  flex: 0 0 auto;
+}
+
+.sb__logo {
+  position: relative;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--p-mist) 6%, transparent);
+  border: 1px solid var(--gl-panel-edge);
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    transform var(--t-1) var(--e-standard),
+    border-color var(--t-4) var(--e-standard);
+}
+
+.sb__logo img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  border-radius: var(--r-full);
+}
+
+/* 高光是一次性的：hover 进来放一次 320ms 然后衰减到 0，绝不一直亮 */
+.sb__logo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 0%, var(--gl-hl-edge), transparent 70%);
+  opacity: 0;
+  transition: opacity var(--t-4) var(--e-standard);
+  pointer-events: none;
+}
+
+.sb__logo:hover::before {
+  opacity: var(--gl-hl-peak);
+  transition-duration: var(--t-1);
+}
+
+.sb__logo:hover {
+  border-color: var(--gl-hl-edge);
+}
+
+.sb__logo:active {
+  transform: scale(0.97);
+}
+
+.sb__brand-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sb__title {
+  font-family: var(--font-ui-display);
+  font-size: var(--fs-title);
+  font-weight: 600;
+  letter-spacing: -0.008em;
+  line-height: 1.3;
+  color: var(--fg-0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb__ctx {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  height: 18px;
+  padding: 0 6px 0 4px;
+  margin-left: -4px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--fg-2);
+  font-size: var(--fs-meta2);
+  cursor: pointer;
+  transition:
+    background-color var(--t-1) var(--e-standard),
+    color var(--t-1) var(--e-standard),
+    border-color var(--t-1) var(--e-standard);
+}
+
+.sb__ctx:hover {
+  background: color-mix(in srgb, var(--p-mist) 5%, transparent);
+  border-color: var(--gl-panel-edge-soft);
+  color: var(--fg-0);
+}
+
+.sb__ctx-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb__ctx-page::before {
+  content: '·';
+  margin-right: 5px;
+  opacity: 0.5;
+}
+
+/* ---- 快捷操作区：比导航明显，但只有一个主入口 ---- */
+
+.sb__quick {
+  flex: 0 0 auto;
+  margin: var(--sb-gap-brand-quick) var(--sb-pad-x) 0;
+  padding: var(--sp-2);
+  border-radius: var(--r-md);
+  border: 1px solid var(--gl-panel-edge-soft);
+  background: color-mix(in srgb, var(--p-mist) 8%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.sb__search {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 36px;
+  padding: 0 var(--sp-2h);
+  border-radius: var(--r-md);
+  border: 1px solid var(--gl-bed-edge);
+  /* 数据落在衬底上：搜索框是输入控件，读数必须清晰 */
+  background: color-mix(in srgb, var(--gl-bed-color) calc(var(--gl-bed-alpha) * 100%), transparent);
+  color: var(--fg-2);
+  font-size: var(--fs-body2);
+  cursor: pointer;
+  transition:
+    border-color var(--t-1) var(--e-standard),
+    color var(--t-1) var(--e-standard);
+}
+
+.sb__search:hover {
+  border-color: var(--gl-panel-edge);
+  color: var(--fg-0);
+}
+
+.sb__search-label {
+  flex: 1 1 auto;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb__kbd {
+  flex: 0 0 auto;
+  font-family: var(--font-num);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.01em;
+  color: var(--fg-2);
+  padding: 1px 4px;
+  border-radius: var(--r-xs);
+  border: 1px solid var(--gl-panel-edge-soft);
+  background: color-mix(in srgb, var(--p-mist) 6%, transparent);
+}
+
+.sb__quick-row {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.sb__quick-btn {
+  flex: 1 1 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--gl-panel-edge-soft);
+  background: color-mix(in srgb, var(--p-mist) 5%, transparent);
+  color: var(--fg-1);
+  font-size: var(--fs-body2);
+  cursor: pointer;
+  transition:
+    background-color var(--t-1) var(--e-standard),
+    border-color var(--t-1) var(--e-standard),
+    color var(--t-1) var(--e-standard),
+    transform var(--t-1) var(--e-standard);
+}
+
+.sb__quick-btn:hover {
+  background: color-mix(in srgb, var(--p-mist) 9%, transparent);
+  border-color: var(--gl-panel-edge);
+  color: var(--fg-0);
+}
+
+.sb__quick-btn:active {
+  transform: scale(0.98);
+}
+
+.sb__quick-btn:disabled {
+  color: var(--fg-3);
+  cursor: not-allowed;
+}
+
+.sb__quick-btn--busy {
+  color: var(--fg-2);
+}
+
+/* 可更新数字用注意色（ember），这是语义不是装饰 */
+.sb__quick-num {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--p-ember);
+}
+
+/* ---- 分组标题：中文、无 uppercase、字距 +0.02em、全文档只出现两次 ---- */
+
+.sb__group {
+  flex: 0 0 auto;
+  height: var(--sb-group-head-h);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--sb-pad-x);
+  margin-top: var(--sb-group-gap);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--fg-2);
+}
+
+/* ---- 主导航区 ---- */
+
+.sb__nav {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--sb-pad-x);
+}
+
+.sb__item {
+  position: relative;
+  z-index: var(--z-item);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2h);
+  height: var(--sb-item-h);
+  padding: 0 var(--sp-2);
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--fg-1);
+  font-size: var(--fs-body2);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--t-1) var(--e-standard),
+    color var(--t-2) var(--e-standard),
+    height var(--t-2) var(--e-standard);
+}
+
+.sb__item:hover {
+  background: color-mix(in srgb, var(--p-mist) 5%, transparent);
+  color: var(--fg-0);
+}
+
+.sb__item:active {
+  transform: scale(0.995);
+}
+
+/*
+ * 选中态：TSX 输出的是 `aria-current="page"`（SidebarShell.tsx:470），不是 aria-selected。
+ * 这两条以前写的是 [aria-selected='true']，全库没有任何元素会命中 —— 于是展开态里
+ * 「当前在哪一项」只剩滑块位移在说，文字和图标一点反馈都没有。选择器改成实际属性。
+ */
+.sb__item[aria-current='page'] {
+  color: var(--fg-0);
+  font-weight: 500;
+}
+
+.sb__item:disabled {
+  color: var(--fg-3);
+  cursor: not-allowed;
+}
+
+.sb__item-icon {
+  flex: 0 0 var(--sb-icon);
+  width: var(--sb-icon);
+  height: var(--sb-icon);
+  display: grid;
+  place-items: center;
+  color: var(--fg-2);
+  transition: color var(--t-2) var(--e-standard);
+}
+
+.sb__item[aria-current='page'] .sb__item-icon,
+.sb__item:hover .sb__item-icon {
+  color: currentColor;
+}
+
+.sb__item-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb__item-num {
+  flex: 0 0 auto;
+  font-size: var(--fs-meta2);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-2);
+  transition: color var(--t-2) var(--e-standard);
+}
+
+.sb__item-num--alert {
+  color: var(--p-ember);
+  font-weight: 600;
+}
+
+/* ---- 玻璃滑块：位置是一个物理实体，不是一个「闪过」的反馈 ---- */
+
+.gl-slider {
+  position: absolute;
+  left: var(--sb-pad-x);
+  right: var(--sb-pad-x);
+  z-index: var(--z-slider);
+  height: var(--sb-item-h);
+  border-radius: var(--r-sm);
+  pointer-events: none;
+  /* 滑块内部是实色衬底（alpha 0.7），保证选中项文字同样可读 */
+  background:
+    linear-gradient(100deg, var(--p-brand-10), transparent 62%),
+    color-mix(in srgb, var(--gl-bed-color) 70%, transparent);
+  border: 1px solid var(--gl-panel-edge);
+  box-shadow: var(--gl-sh-lift);
+  transition:
+    transform var(--t-3) var(--e-glass),
+    height var(--t-3) var(--e-glass),
+    opacity var(--t-2) var(--e-standard);
+}
+
+.gl-slider--first {
+  transition:
+    opacity var(--t-2) var(--e-standard),
+    height var(--t-3) var(--e-glass);
+}
+
+.gl-slider--instant {
+  transition: none;
+}
+
+/* 收起态：滑块居中，尺寸变方 */
+.gl-slider--collapsed {
+  left: 50%;
+  right: auto;
+  width: 32px;
+  height: 32px;
+  margin-left: -16px;
+  border-radius: var(--r-sm);
+}
+
+/*
+ * 收起态的左指示条。
+ * 展开态没有对应伪元素 —— 展开时「当前项」靠 [aria-current='page'] 的文字/图标
+ * 反馈加上滑块位置来说，不需要额外画一条。原注释说「展开态指示条画在项内伪元素里」，
+ * 那条规则从来不存在，是按设计稿想象写下来的。
+ */
+.sb--collapsed .gl-slider::after {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  width: 2px;
+  height: 16px;
+  margin-top: -8px;
+  border-radius: var(--r-hair);
+  background: var(--p-brand);
+}
+
+/* ---------------------------------------------------------------------------
+ * 缝隙刻度 —— 记忆点
+ *
+ * 每格 = profile dependencies 里的一项，水平位置 = 它在 bundles 数组里的下标。
+ * 实心 = 在 bundles 里（已加载）；下沉 3px 的空心缺口 = 装了但没被加载。
+ * 这条带子是全产品唯一允许「动得明显」的数据装置，且只在自己变化的那几格上动。
+ * ------------------------------------------------------------------------ */
+
+.gap-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5px;
+  height: 18px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  overflow: hidden;
+}
+
+.gap-strip:focus-visible {
+  outline: 2px solid var(--p-brand);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+.gap-strip__tick {
+  flex: 0 0 4px;
+  width: 4px;
+  height: 14px;
+  padding: 0;
+  border: none;
+  border-radius: var(--r-hair);
+  background: color-mix(in srgb, var(--fg-1) 55%, transparent);
+  cursor: pointer;
+  transition:
+    transform var(--t-1) var(--e-standard),
+    background-color var(--t-1) var(--e-standard),
+    opacity var(--t-1) var(--e-standard),
+    height var(--t-4) var(--e-decel);
+}
+
+/* 缺口：更矮、下沉 3px、空心描边、用注意色 */
+.gap-strip__tick--gap {
+  /* 缺口原来画成 4×8、下沉 3px 的「小方块」。宽度是对的（逐位对应下标），
+   * 但高度只有实心格的一半多，一列里混着两种规格，读起来像「画坏了的方块」
+   * 而不是「这一格没加载」。改成同样 4×14 的空心槽：同一把尺子上，
+   * 实心 = 已加载，空心 = 没进加载列表 —— 高度一致才数得清。 */
+  height: 14px;
+  margin-top: 0;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--p-ember) 80%, transparent);
+}
+
+.gap-strip__tick:hover {
+  transform: scaleY(1.25);
+  background: var(--fg-0);
+}
+
+.gap-strip__tick--gap:hover {
+  background: color-mix(in srgb, var(--p-ember) 24%, transparent);
+}
+
+/* 操作改变了 bundles：新增格从 0 高长到 14px，标记 2 秒后淡出 */
+.gap-strip__tick--added {
+  animation: gap-grow var(--t-4) var(--e-decel) 1;
+}
+
+@keyframes gap-grow {
+  from {
+    height: 0;
+  }
+  to {
+    height: 14px;
+  }
+}
+
+.gap-strip__more {
+  flex: 0 0 auto;
+  align-self: center;
+  margin-left: var(--sp-1);
+  font-size: var(--fs-caption);
+  color: var(--fg-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.gap-strip--dense .gap-strip__tick {
+  flex-basis: 2px;
+  width: 2px;
+}
+
+.gap-strip--dense {
+  gap: 1px;
+}
+
+/* 读不到 bundles：不假装有数据（这条不是 0，是未知） */
+.gap-strip--error {
+  height: 1px;
+  background: var(--danger-line);
+}
+
+.gap-strip--empty {
+  height: 1px;
+  background: transparent;
+  border-top: 1px dashed var(--border-soft);
+}
+
+/* ---- 收起态：竖版刻度柱（交叉淡化，不是旋转 90°，旋转会让格子变形） ---- */
+
+.gap-strip--v {
+  flex-direction: column;
+  align-items: center;
+  width: 8px;
+  height: 64px;
+  gap: 1px;
+}
+
+.gap-strip--v .gap-strip__tick {
+  flex: 0 0 1.5px;
+  width: 4px;
+  height: 1.5px;
+}
+
+.gap-strip--v .gap-strip__tick--gap {
+  width: 3px;
+  margin-top: 0;
+  margin-left: 1px;
+  height: 1.5px;
+}
+
+/* ---------------------------------------------------------------------------
+ * 状态卡（动态状态区）
+ *
+ * 三个数字放一排、等距列对齐 —— 不用「·」串联。
+ * 理由：「42 插件 · 39 加载层」把两个数的关系抹平了，读者要自己减；
+ * 而 42 与 39 的**差**才是这个产品最要紧的一眼信息。
+ * ------------------------------------------------------------------------ */
+
+.sb__status {
+  flex: 0 0 auto;
+  margin: var(--sb-gap-nav-status) var(--sb-pad-x) 0;
+  padding: var(--sp-2h) var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--gl-bed-edge);
+  background: color-mix(in srgb, var(--gl-bed-color) calc(var(--gl-bed-alpha) * 100%), transparent);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2h);
+  transition: background-color var(--t-5) var(--e-standard);
+}
+
+.sb__status--error {
+  border-top: 1px solid var(--danger-line);
+}
+
+.sb__readouts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2h);
+}
+
+.sb__readout {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.sb__readout-key {
+  font-size: var(--fs-caption);
+  letter-spacing: 0.01em;
+  color: var(--fg-2);
+}
+
+.sb__readout-val {
+  font-size: var(--fs-num);
+  font-weight: 600;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-0);
+}
+
+.sb__readout-val--alert {
+  color: var(--p-ember);
+}
+
+.sb__readout-val--danger {
+  color: var(--danger);
+}
+
+.sb__status-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.sb__status-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-meta2);
+  color: var(--fg-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 「38 ms」是全产品唯一的实时测量值 —— 它是这张卡的重音，不是灰色小字 */
+.sb__latency {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  font-family: var(--font-num);
+  font-size: var(--fs-num);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-0);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.sb__latency:hover {
+  color: var(--p-brand);
+}
+
+.sb__latency-unit {
+  font-size: var(--fs-caption);
+  font-weight: 400;
+  color: var(--fg-2);
+}
+
+.sb__latency--untested {
+  color: var(--p-ember);
+  font-size: var(--fs-meta2);
+}
+
+.sb__status-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font-size: var(--fs-meta2);
+  color: var(--fg-2);
+}
+
+/* ---------------------------------------------------------------------------
+ * 状态点六态（§2.3）
+ *
+ * 「运行中」的呼吸是六态里唯一无限循环的动效 —— 因为它表示**持续状态**。
+ * 其余全部一次性。降级时呼吸退化为静态实心 + 常驻外环。
+ * ------------------------------------------------------------------------ */
+
+.dot {
+  position: relative;
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--fg-2);
+  transition: background-color var(--t-2) var(--e-standard);
+}
+
+.dot--online {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent);
+}
+
+.dot--running {
+  background: var(--p-brand);
+}
+
+.dot--running::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 1px solid var(--p-brand);
+  opacity: 0.22;
+  animation: dot-breathe 2.4s var(--e-standard) infinite;
+}
+
+@keyframes dot-breathe {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.22;
+  }
+  70% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.dot--loading {
+  background: transparent;
+  border: 1.5px solid var(--fg-2);
+  border-top-color: transparent;
+  animation: dot-spin 900ms linear infinite;
+}
+
+@keyframes dot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dot--ok {
+  background: var(--ok);
+}
+
+.dot--fail {
+  background: var(--danger);
+  border: 1px solid var(--danger-hi);
+  animation: dot-shake 70ms var(--e-standard) 2;
+}
+
+@keyframes dot-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(0.6px);
+  }
+}
+
+.dot--offline {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--fg-2);
+}
+
+.sb__status .dot {
+  margin-top: 1px;
+}
+
+/* ---- 底部用户区：与主导航之间留明显空白，形成稳定视觉重心 ---- */
+
+.sb__spacer {
+  flex: 1 1 auto;
+  min-height: var(--sb-gap-status-user);
+}
+
+.sb__user {
+  flex: 0 0 auto;
+  margin: 0 var(--sb-pad-x);
+  height: 46px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2h);
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--p-mist) 4%, transparent);
+  cursor: pointer;
+  transition:
+    background-color var(--t-1) var(--e-standard),
+    border-color var(--t-1) var(--e-standard);
+}
+
+.sb__user:hover {
+  background: color-mix(in srgb, var(--p-mist) 7%, transparent);
+  border-color: var(--gl-panel-edge-soft);
+}
+
+.sb__avatar {
+  position: relative;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  background: var(--p-slate);
+  color: var(--p-mist);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+
+.sb__user-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sb__user-name {
+  font-size: var(--fs-meta2);
+  font-weight: 500;
+  color: var(--fg-0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb__user-sub {
+  font-size: var(--fs-caption);
+  color: var(--fg-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb__icon-btn {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--fg-2);
+  cursor: pointer;
+  transition:
+    background-color var(--t-1) var(--e-standard),
+    color var(--t-1) var(--e-standard);
+}
+
+.sb__icon-btn:hover {
+  background: color-mix(in srgb, var(--p-mist) 6%, transparent);
+  color: var(--fg-0);
+}
+
+/* ---- 收起态：不是「把文字藏起来」，是重新配平的窄控制条 ---- */
+
+.sb--collapsed .sb__brand {
+  justify-content: center;
+  padding: 0;
+}
+
+.sb--collapsed .sb__brand-text,
+.sb--collapsed .sb__quick,
+/*
+ * 注意这里是 group-head（分组标题）而不是 group（分组容器）。
+ * 分组容器里装的就是导航项本身，收起态把它一起 display:none 就
+ * 等于把整个导航都藏了 —— 那时窄条上只剩 Logo 和两个快捷按钮，
+ * 既点不到任何页面，也看不出当前在哪一页。
+ * 收起态要藏的是「标题」，留下的是「项」。
+ */
+.sb--collapsed .sb__group-head,
+.sb--collapsed .sb__item-label,
+.sb--collapsed .sb__item-num,
+.sb--collapsed .sb__status,
+.sb--collapsed .sb__user-text {
+  display: none;
+}
+
+/* 收起态分组之间不再留分组间距，否则 4 个空 margin 会把导航往下推得很散 */
+.sb--collapsed .sb__group {
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.sb--collapsed .sb__group:first-child {
+  margin-top: 0;
+}
+
+.sb--collapsed .sb__nav {
+  padding: 0;
+  align-items: center;
+}
+
+/* 收起态：行高更大（40）且图标更大（18），命中区 32×32 不重叠 */
+.sb--collapsed .sb__item {
+  height: var(--sb-item-h-collapsed);
+  width: 44px;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+}
+
+.sb--collapsed .sb__item-icon {
+  flex: 0 0 var(--sb-icon-collapsed);
+  width: var(--sb-icon-collapsed);
+  height: var(--sb-icon-collapsed);
+}
+
+.sb--collapsed .sb__quick-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--sb-gap-brand-quick);
+}
+
+.sb--collapsed .sb__user {
+  margin: 0;
+  width: 100%;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+}
+
+.sb--collapsed .sb__foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.sb__quick-mini,
+.sb__foot {
+  display: none;
+}
+
+.sb--collapsed .gl-slider--collapsed {
+  display: block;
+}
+
+/* 收起态的状态列：点 + 两位延迟数字 */
+.sb__mini-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.sb__mini-latency {
+  font-family: var(--font-num);
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-1);
+}
+
+/* 主区：壁纸之上、侧栏右侧。数据区自己带实衬底（0.72+），不靠壁纸给对比 */
+.shell-main {
+  position: relative;
+  z-index: var(--z-content);
+  /* 这里原本写的是 height: 100%。在 flex 行里 100% = 容器内容高（844），
+   * 而这一项上下各还有 10px 外边距 —— 于是它比容器高出 10px，
+   * 文档 scrollHeight 被撑到 892 > 882，页面真的能滚动，而且真被滚了 9.33px：
+   *   · 标题栏被推出窗口上沿（y = -9），三个窗口按钮只剩一条缝
+   *   · 侧边栏是 position:fixed 不跟着动，于是和标题栏错开 9px
+   * 高度交给 flex 拉伸算（align-self: stretch + height:auto），外边距才被算进去。 */
+  height: auto;
+  align-self: stretch;
+  margin-left: calc(var(--sb-w-expanded) + var(--sb-margin) * 2);
+  transition: margin-left var(--t-2) var(--e-standard);
+}
+
+.shell-main--collapsed {
+  margin-left: calc(var(--sb-w-collapsed) + var(--sb-margin) * 2);
+}
+
+/* 降低动效：「运行中」呼吸与加载旋转退化为静态形态（§2.3 / §2.6） */
+@media (prefers-reduced-motion: reduce) {
+  .dot--running::after {
+    animation: none;
+    opacity: 0.22;
+    transform: scale(1.2);
+  }
+
+  .dot--loading {
+    animation: none;
+    border-top-color: var(--fg-2);
+  }
+
+  .dot--fail {
+    animation: none;
+  }
+
+  .gap-strip__tick--added {
+    animation: none;
+  }
+
+  .gl-slider {
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * 补齐：WallpaperLayer / SidebarShell 引用的、上面还没写的类
+ * ------------------------------------------------------------------ */
+
+/* 系统材质（acrylic / mica）模式：模糊的是桌面本身，自绘壁纸层必须让位，
+   否则变成两层底。这里只留一层薄遮罩保证面板上的文字可读。 */
+.wp-layer--os .wp-layer__veil--dark { opacity: 0.28; }
+:root[data-theme='light'] .wp-layer--os .wp-layer__veil--light { opacity: 0.24; }
+
+/* 两张遮罩按主题二选一：深色模式压暗、浅色模式提亮。
+   两套都渲染，靠 data-theme 决定谁生效 —— 切换主题时就能平滑过渡，
+   不用在 JS 里改内联样式（那样会跳一下）。 */
+.wp-layer__veil { transition: opacity var(--t-4) var(--e-standard); }
+.wp-layer__veil--light { display: none; }
+.wp-layer__veil--dark { display: block; }
+:root[data-theme='light'] .wp-layer__veil--dark { display: none; }
+:root[data-theme='light'] .wp-layer__veil--light { display: block; }
+
+/* 品牌区的文字块（Logo 右边那两行），收起态整块隐藏 */
+.sb__brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 1px;
+}
+
+/* 主快捷按钮：比普通导航明显一档，但只靠极淡的品牌色底 + 细边，
+   不做发光也不做渐变堆叠 —— 侧边栏最明确的入口不等于最亮的东西。 */
+.sb__quick-btn--main {
+  height: 36px;
+  background: linear-gradient(
+      100deg,
+      color-mix(in srgb, var(--p-brand) 14%, transparent),
+      transparent 70%
+    ),
+    color-mix(in srgb, var(--gl-bed-color) 60%, transparent);
+  border-color: color-mix(in srgb, var(--p-brand) 26%, transparent);
+  color: var(--fg-0);
+  font-weight: 600;
+}
+
+.sb__search-text {
+  flex: 1 1 auto;
+  text-align: left;
+  color: var(--fg-2);
+}
+
+/* 收起态的数字角标：只在这个宽度下出现，展开态用整行数字 */
+.sb__mini-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: var(--r-full);
+  background: var(--p-ember);
+  color: var(--p-ink);
+  font-size: 9px;
+  line-height: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* 状态卡里的三个读数：等距列，不用 `·` 串联（那种写法是在用标点代替布局） */
+.sb__readout {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.sb__readout-val { font-size: var(--fs-body2); line-height: 1.15; }
+
+.sb__status-row--sub { gap: var(--space-1); }
+
+/* 这里原本有一条 `.sb__latency-test`（那枚写着「测」的 10px 小按钮）。
+ * 它被删掉了：代理速度现在只有一枚刷新按钮（`.sb__refresh`），点一次同时重读 DSH 状态
+ * 与重测延迟，读数是纯 span 不再是按钮。同一条规则留在文件里会变成永远不命中的死代码，
+ * 后来的人会以为还有第二种入口。 */
+
+.sb__group-head {
+  padding: 0 var(--sb-pad-x);
+  color: var(--fg-3);
+  font-size: var(--fs-caption);
+  line-height: var(--sb-group-head-h);
+  letter-spacing: 0.02em;
+}
+
+.sb__collapse { flex: 0 0 auto; }
+
+/* 收起态：状态区竖排（点 / 竖刻度 / 延迟 / 展开按钮），像一根完整的窄条 */
+.sb--collapsed .sb__status {
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  height: auto;
+}
+
+.sb--collapsed .sb__user {
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+
+/* 主区让位：展开/收起两套左边距。用 margin 而不是给 body 加 padding，
+   因为主区自己是 flex 子项，margin 能跟着过渡一起动。 */
+.app__main.shell-main { transition: margin-left var(--t-3) var(--e-glass); }
+
+@media (prefers-reduced-motion: reduce) {
+  .app__main.shell-main { transition: none; }
+}
+/* ------------------------------------------------------------------ *
+ * 布局修正（第一轮实机截屏发现）
+ *
+ * 1) .sb__group 早先被写成「22px 高的一行、flex row」—— 那是把分组标题当成
+ *    整组的容器尺寸了。实际结构是「标题 + 若干项」的竖排容器，必须回到 block 流。
+ * 2) 三个分组十项加起来超出面板可用高度，导航区必须可滚动，
+ *    否则它会和底部状态卡叠在一起（不是被挤下去，是直接压上去）。
+ * ------------------------------------------------------------------ */
+
+.sb__group {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  height: auto;
+  gap: 2px;
+  margin-top: var(--sb-group-gap);
+  padding: 0;
+  /* 复位早先写在这一层上的排版属性，它们现在归 .sb__group-head */
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: normal;
+  color: inherit;
+}
+
+.sb__group:first-child { margin-top: 0; }
+
+/* 标题的左右内缩由 .sb__nav 的 padding 提供，这里不能再加一遍 */
+.sb__group-head { padding: 0; }
+
+.sb__nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding-bottom: var(--sp-2);
+}
+
+/* 导航可滚动之后，这个强制留白只作为「导航与状态卡之间不许贴死」的下限 */
+.sb__spacer { min-height: 10px; }
+
+/* 收起态没有滚动区，导航要自己收缩 */
+.sb--collapsed .sb__nav { flex: 0 0 auto; overflow: visible; }
+/* ------------------------------------------------------------------ *
+ * 主区也做成悬浮面板
+ *
+ * 第一轮实机截屏暴露的问题：侧边栏是悬浮玻璃，主区却是一整块不透明的矩形，
+ * 壁纸只剩侧边栏上方一条窄缝能看见 —— 那不是「悬浮」，那是把窗口刷成了两个世界。
+ *
+ * 主区的透明度比侧边栏高一档（面板 alpha + 24%），并且**只用小一号的 saturate**：
+ * 数据要落在衬底上，不能落在模糊里（§0 第一条硬规则）。
+ * ------------------------------------------------------------------ */
+
+.app__main.shell-main {
+  margin: var(--sb-margin) var(--sb-margin) var(--sb-margin) 0;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--gl-panel-edge);
+  /* 先复位 components.css 里那套实色与左分隔线 */
+  border-left: 1px solid var(--gl-panel-edge);
+  background: color-mix(
+    in srgb,
+    var(--gl-panel-color) calc(var(--gl-panel-alpha) * 100% + 24%),
+    transparent
+  );
+  backdrop-filter: blur(var(--gl-panel-blur)) saturate(calc(var(--gl-panel-sat) * 0.7));
+  -webkit-backdrop-filter: blur(var(--gl-panel-blur)) saturate(calc(var(--gl-panel-sat) * 0.7));
+  box-shadow: var(--gl-sh-panel);
+  overflow: hidden;
+}
+
+.app__main.shell-main.shell-main--collapsed {
+  margin-left: calc(var(--sb-w-collapsed) + var(--sb-margin) * 2);
+}
+
+/* 顶部条透明：壁纸要一直透到窗口最上面一行，否则还是「贴边黑条」 */
+.titlebar {
+  background: transparent;
+  border-bottom-color: color-mix(in srgb, var(--gl-panel-edge) 60%, transparent);
+}
+
+/* 列表与详情的滚动区自己带底会让透明层白做：让它们透出主区衬底 */
+.app__main.shell-main .plist,
+.app__main.shell-main .detail,
+.app__main.shell-main .subbar,
+.app__main.shell-main .toolbar {
+  background: transparent;
+}
+
+/* 状态卡瘦身：三个分组十项导航 + 状态卡 + 用户区，垂直方向必须挤得下 */
+.sb__status {
+  padding: var(--sp-2) var(--sp-2h);
+  gap: var(--sp-2);
+  margin-top: var(--sb-gap-nav-status);
+}
+
+.sb__status .dshctl { gap: 4px; }
+.sb__status .dshctl__actions { gap: var(--sp-2); }
+.sb__status .dshctl__hint { margin: 0; font-size: var(--fs-caption); }
+
+/* ------------------------------------------------------------------ *
+ * 第四轮截屏发现的两个硬伤（都是我第三轮自己改出来的）
+ *
+ * 1) 主区被侧边栏压住：`margin: <t> <r> <b> 0` 这个简写把 margin-left 也写成了 0，
+ *    而侧边栏是 position:fixed、不参与流式布局 —— 于是主区从 x=0 开始铺，
+ *    整列插件名与图标被压在玻璃底下。margin-left 必须单独给，且要放在简写之后。
+ * 2) 数据落在太透的衬底上：主区原来用 --gl-panel-color(0.52+24%) 叠粉壁纸后
+ *    描述文字的发灰 —— §0 第一条硬规则就是「数据永不落在模糊层上」，
+ *    所以主区改用更实的 --gl-bed-color，透明度的账记在衬底上而不是面板上。
+ * ------------------------------------------------------------------ */
+
+.app__main.shell-main {
+  /* 放在 margin 简写之后，覆盖掉那个 0 */
+  margin-left: calc(var(--sb-w-expanded) + var(--sb-margin) * 2);
+  background: color-mix(
+    in srgb,
+    var(--gl-bed-color) calc(var(--panel-alpha) * 100%),
+    transparent
+  );
+  backdrop-filter: blur(var(--panel-blur)) saturate(calc(var(--gl-panel-sat) * 0.5));
+  -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(calc(var(--gl-panel-sat) * 0.5));
+}
+
+.app__main.shell-main.shell-main--collapsed {
+  margin-left: calc(var(--sb-w-collapsed) + var(--sb-margin) * 2);
+}
+
+/* ------------------------------------------------------------------
+ * 详情面板：悬浮衬底
+ *
+ * 它和 .shell-main 是 .app__body 里的两个**兄弟**节点（src/renderer/src/App.tsx:255），
+ * 不在主区里面 —— 所以上面那套「10px 外边距 + 圆角 + 1px 边 + --gl-bed-color
+ * 衬底 + blur + overflow:hidden」一点都吃不到。结果是详情区变成一块透明板
+ * 直接压在原图上：那行「8 张截图 · 自 GitHub raw 的 README.md」是近白色，
+ * 落在浅色壁纸上基本读不出来，整块看起来就是「被壁纸占了」。
+ *
+ * 记法沿用主区：透明度的账记在衬底上，玻璃可以虚，读数不能虚。
+ * ------------------------------------------------------------------ */
+.app__body > .detail {
+  margin: var(--sb-margin) var(--sb-margin) var(--sb-margin) 0;
+  height: auto;
+  align-self: stretch;
+  min-width: 0;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--gl-panel-edge);
+  background: color-mix(
+    in srgb,
+    var(--gl-bed-color) calc(var(--panel-alpha) * 100%),
+    transparent
+  );
+  backdrop-filter: blur(var(--panel-blur)) saturate(calc(var(--gl-panel-sat) * 0.5));
+  -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(calc(var(--gl-panel-sat) * 0.5));
+  box-shadow: var(--gl-sh-panel);
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------------
+ * 系统「降低透明度」：主区与详情区一起放弃玻璃
+ *
+ * 这条原来写在文件中间（第一版主区规则旁边），被后面同选择器、同特异性（0,2,0）的
+ * 规则整体覆盖 —— 也就是系统开关其实完全无效，只是没人报错。规则之间的先后顺序
+ * 就是胜负本身，所以它必须排在所有 .app__main.shell-main 规则之后。
+ * 详情区那块是我后加的，也得一起管，不然「降低透明度」只降一半。
+ * ------------------------------------------------------------------ */
+@media (prefers-reduced-transparency: reduce) {
+  .app__main.shell-main,
+  .app__body > .detail {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--bg-1);
+  }
+}

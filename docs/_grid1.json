@@ -1,0 +1,96 @@
+{
+  "grid": {
+    "columns": 4,
+    "templateCols": "243.333px 243.333px 243.333px 243.333px",
+    "cards": 48,
+    "perRow": 4,
+    "heights": [
+      158
+    ],
+    "iconStats": {
+      "img": 0,
+      "mono": 40,
+      "local": 8,
+      "hole": 0
+    },
+    "domNodes": 744,
+    "status": "共 8281 条，筛出 8281 条 | · | 目录构建于 2026-11-01 | · | 来自 npm 包 dsh-plugin-catalog | · | 用的是本地缓存 · 拉取于 6 分钟前",
+    "firstCard": "A | archify#integrations/deepseek-harness | 从仓库或系统描述生成经过校验的自包含交互式架构图、流程图、时序图、数据流图和生命周期图。 | ★ 8.99 万 | ↓ 3.84 万 | 文档与渲染",
+    "firstCardAct": "安装",
+    "more": "已显示 48 / 8281 个插件 | 再看 48 个"
+  },
+  "detail": {
+    "opened": true,
+    "role": "dialog",
+    "ariaModal": "true",
+    "ariaLabelledby": "_r_0_",
+    "buttons": [
+      "✕",
+      "安装到 desktop",
+      "换版本",
+      "打开仓库",
+      "https://github.com/tt-a1i/archify/tree/main/integrations/deepseek-harness"
+    ],
+    "sections": {
+      "slot": "截图 | 这块位置留给 README 里的插件截图，等图片组件落地后接上。",
+      "kvKeys": [
+        "星标",
+        "下载量",
+        "分类",
+        "目录声明版本",
+        "收录时间",
+        "安装 spec",
+        "仓库"
+      ],
+      "caps": "执行命令 | 写文件 | 读文件 | 读环境变量 | 扫描于 2026-09-24",
+      "desc": "从仓库或系统描述生成经过校验的自包含交互式架构图、流程图、时序图、数据流图和生命周期图。",
+      "title": "archify#integrations/deepseek-harness"
+    },
+    "focusInsideSheet": true,
+    "overlayZ": "40"
+  },
+  "escClose": {
+    "sheetGone": true,
+    "focusBackOnCard": true,
+    "focusName": "archify#integrations/deepseek-harness"
+  },
+  "installedCard": {
+    "hits": 9,
+    "name": "dsh-market",
+    "act": "已安装",
+    "hasInstallButton": false,
+    "badges": [
+      "已安装"
+    ]
+  },
+  "installedDetail": {
+    "title": "dsh-market",
+    "badges": [
+      "NPM",
+      "已安装 1.73.3"
+    ],
+    "buttons": [
+      "换版本",
+      "打开仓库"
+    ],
+    "note": "这个 profile 里已经装了，要动版本就用右边的「换版本」。",
+    "hasInstallBtn": false
+  },
+  "picker": {
+    "mounted": true,
+    "note": "下面列出 dshmarket 在 npm 上的标签和版本，点一条就装那个版本；这会改desktop/package.json。",
+    "listbox": true,
+    "options": 63,
+    "firstOptions": [
+      "latest | 2026-11-02 | 升级",
+      "beta | 2026-08-23 | 降级",
+      "dev | 2026-08-19 | 降级",
+      "1.73.8 | 2026-11-02 | 升级"
+    ],
+    "mentionsPkg": true
+  },
+  "cleanup": {
+    "sheetOpen": false,
+    "cards": 48
+  }
+}

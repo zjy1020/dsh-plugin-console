@@ -1,0 +1,120 @@
+    "name": "clutch-dsh#clutch-dsh-office",
+    "url": "https://github.com/Cerbur/clutch-dsh/tree/main/packages/clutch-dsh-office",
+    "owner": "Cerbur"
+  },
+  {
+    "name": "dsh-prompt-optimize",
+    "url": "https://github.com/ClockworkParrot/dsh-prompt-optimize",
+    "owner": "ClockworkParrot"
+  },
+  {
+    "name": "dsh-better-left-sidebar",
+    "url": "https://github.com/exoticknight/dsh-better-left-sidebar",
+    "owner": "exoticknight"
+  },
+  {
+    "name": "dsh-legal-workbench",
+    "url": "https://github.com/gaog88666-boop/dsh-legal-workbench",
+    "owner": "gaog88666-boop"
+  },
+  {
+    "name": "dsh-mobile-shell",
+    "url": "https://github.com/Htao-uu/dsh-mobile-shell",
+    "owner": "Htao-uu"
+  },
+  {
+    "name": "dsh-sidebar-sections",
+    "url": "https://github.com/LeeScenic/dsh-sidebar-sections",
+    "owner": "LeeScenic"
+  },
+  {
+    "name": "dsh-intelligent-UI",
+    "url": "https://github.com/lisihao/dsh-intelligent-UI",
+    "owner": "lisihao"
+  },
+  {
+    "name": "dsh-artifacts",
+    "url": "https://github.com/lucagiftzek/dsh-artifacts",
+    "owner": "lucagiftzek"
+  },
+  {
+    "name": "dsh-adapt-packs",
+    "url": "https://github.com/LUgABeEEE/dsh-adapt-packs",
+    "owner": "LUgABeEEE"
+  },
+  {
+    "name": "dsh-inline-edit",
+    "url": "https://github.com/maxy1817/dsh-inline-edit",
+    "owner": "maxy1817"
+  },
+  {
+    "name": "dsh-ccd",
+    "url": "https://github.com/mmyddd/dsh-ccd",
+    "owner": "mmyddd"
+  },
+  {
+    "name": "dsh-workspace-resizer",
+    "url": "https://github.com/nomxy/dsh-workspace-resizer",
+    "owner": "nomxy"
+  },
+  {
+    "name": "stronger-dsh",
+    "url": "https://github.com/nothurry/stronger-dsh",
+    "owner": "nothurry"
+  },
+  {
+    "name": "dsh-obsidian-notes",
+    "url": "https://github.com/revive123456/dsh-obsidian-notes",
+    "owner": "revive123456"
+  },
+  {
+    "name": "dsh-folder-launcher",
+    "url": "https://github.com/snnnnke/dsh-folder-launcher",
+    "owner": "snnnnke"
+  },
+  {
+    "name": "dsh-session-inbox",
+    "url": "https://github.com/Tracest/dsh-session-inbox",
+    "owner": "Tracest"
+  },
+  {
+    "name": "dsh-chat-history",
+    "url": "https://github.com/VioletScar-Hui/dsh-chat-history",
+    "owner": "VioletScar-Hui"
+  },
+  {
+    "name": "dsh-blackhole-radio-lab",
+    "url": "https://github.com/WhatCannotBeSaid/dsh-blackhole-radio-lab",
+    "owner": "WhatCannotBeSaid"
+  },
+  {
+    "name": "dsh-mobile-layout",
+    "url": "https://github.com/XiaoPb/dsh-mobile-layout",
+    "owner": "XiaoPb"
+  },
+  {
+    "name": "dsh-entry-organizer",
+    "url": "https://github.com/xishuai-zero/dsh-entry-organizer",
+    "owner": "xishuai-zero"
+  },
+  {
+    "name": "dsh-plugin-dock",
+    "url": "https://github.com/yuna78/dsh-plugin-dock",
+    "owner": "yuna78"
+  },
+  {
+    "name": "dsh-quick-resume",
+    "url": "https://github.com/yuna78/dsh-quick-resume",
+    "owner": "yuna78"
+  },
+  {
+    "name": "dsh-opencode-usage",
+    "url": "https://github.com/2869949486/dsh-opencode-usage",
+    "owner": "2869949486"
+  },
+  {
+    "name": "dsh-command-context",
+    "url": "https://github.com/Lovenndme/dsh-command-context",
+    "owner": "Lovenndme"
+  }
+]

@@ -1,0 +1,203 @@
+/* ------------------------------------------------------------------ *
+ * 拖拽导入壁纸（WallpaperDrop.tsx）
+ *
+ * 拖拽中的提示不做成半透明黑幕：纲领 §11 要的是「边缘光晕 + 边框变亮 + 当前
+ * 壁纸稍微压暗」，所以这里用一圈 inset 光晕 + 一个居中的提示块，
+ * 不放整屏遮罩 —— 整屏遮罩会把壁纸盖掉，而壁纸恰恰是这次操作的主角。
+ * ------------------------------------------------------------------ */
+
+.wpdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-drag);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 当前壁纸稍微压暗，提示「这里马上要换内容了」 */
+  background: color-mix(in srgb, var(--gl-bed-color) 34%, transparent);
+  transition: background var(--t-3) var(--e-standard);
+}
+
+.wpdrop__frame {
+  position: absolute;
+  inset: 6px;
+  border: 1px dashed color-mix(in srgb, var(--fg-2) 45%, transparent);
+  border-radius: var(--r-lg);
+  box-shadow: inset 0 0 0 1px transparent;
+  transition:
+    border-color var(--t-3) var(--e-standard),
+    box-shadow var(--t-3) var(--e-standard);
+}
+
+/* 进入有效区域：边框变亮 + 一圈品牌色光晕 */
+.wpdrop.is-valid .wpdrop__frame {
+  border-color: var(--p-brand);
+  box-shadow:
+    inset 0 0 42px color-mix(in srgb, var(--p-brand) 22%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--p-brand) 30%, transparent);
+}
+
+.wpdrop__hint {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  max-width: 460px;
+  padding: var(--sp-4) var(--sp-6);
+  border: 1px solid var(--gl-panel-edge);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--gl-bed-color) 92%, transparent);
+  box-shadow: var(--gl-sh-float);
+  text-align: center;
+}
+
+.wpdrop__title {
+  font-size: var(--fs-title);
+  color: var(--fg-0);
+}
+
+.wpdrop__sub {
+  font-size: var(--fs-sm);
+  color: var(--fg-1);
+  line-height: 1.55;
+}
+
+.wpdrop.is-valid .wpdrop__title {
+  color: var(--fg-0);
+}
+
+/* ---------------- 预览面板 ---------------- */
+
+.wpprev {
+  width: min(760px, 92vw);
+  max-height: 88vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--gl-panel-edge);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--gl-bed-color) 94%, transparent);
+  box-shadow: var(--gl-sh-float);
+}
+
+.wpprev__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.wpprev__title {
+  font-size: var(--fs-title);
+  color: var(--fg-0);
+}
+
+.wpprev__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+}
+
+.wpprev__side {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.wpprev__side img {
+  display: block;
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: var(--r-md);
+  border: 1px solid var(--gl-panel-edge);
+}
+
+.wpprev__side--old img {
+  opacity: 0.72;
+}
+
+.wpprev__none {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  border-radius: var(--r-md);
+  border: 1px dashed var(--gl-panel-edge);
+  color: var(--fg-3);
+  font-size: var(--fs-sm);
+}
+
+.wpprev__side figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: var(--fs-sm);
+  color: var(--fg-0);
+  min-width: 0;
+}
+
+.wpprev__dim {
+  font-size: var(--fs-caption);
+  color: var(--fg-2);
+}
+
+.wpprev__fit {
+  /* 复用设置面板里那套自动适配样式（appearance-settings.css） */
+}
+
+.wpprev__err {
+  font-size: var(--fs-sm);
+  color: var(--danger);
+  border-left: 2px solid var(--danger);
+  padding-left: var(--sp-2);
+}
+
+.wpprev__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  border-top: 1px solid var(--gl-panel-edge);
+  padding-top: var(--sp-3);
+}
+
+.wpprev__note {
+  flex: 1 1 auto;
+  font-size: var(--fs-caption);
+  color: var(--fg-2);
+  line-height: 1.5;
+}
+
+/* ---------------- 一次性错误提示 ---------------- */
+
+.wpdroperr {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: var(--z-drag);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  max-width: 620px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--danger-line, var(--danger));
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--gl-bed-color) 94%, transparent);
+  box-shadow: var(--gl-sh-float);
+  font-size: var(--fs-sm);
+  color: var(--fg-0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wpdrop,
+  .wpdrop__frame {
+    transition: none;
+  }
+}

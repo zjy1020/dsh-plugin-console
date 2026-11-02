@@ -1,0 +1,3 @@
+[cdp-eval] Uncaught (in promise) TypeError: Cannot read properties of undefined (reading '2')
+TypeError: Cannot read properties of undefined (reading '2')
+    at <anonymous>:170:28

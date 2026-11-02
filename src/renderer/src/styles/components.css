@@ -1,0 +1,2722 @@
+/* =============================================================================
+ * components.css —— 组件与布局。
+ *
+ * 规矩：只引用 tokens.css 的变量；颜色/圆角/时长一律不写死。
+ * 结构：shell → titlebar → sidebar/env → list/row → detail → install → logdrawer
+ *       → dialog/settings → toasts → empty → 响应式收口。
+ * ========================================================================== */
+
+/* =============================== 外壳 =============================== */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 0;
+  background: var(--bg-0);
+  color: var(--fg-0);
+}
+
+.app__body {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.app__main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid var(--border-soft);
+  background: var(--bg-1);
+}
+
+.app__view {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* 顶部警示条（环境告警 / fatal）
+ *
+ * ★ position + z-index 不是装饰，是「能不能被看见」。
+ *   壁纸层 .wp-layer 是 position: fixed + z-index: 0（glass.css:21-24）；
+ *   按 CSS 绘制顺序，带 z-index 的定位元素排在**所有非定位的普通流内容之上**。
+ *   这两条横幅是 .app（flex column）的普通流子项 → 位置占了、高度也算了
+ *   （实测 .app__body 被顶到 y=172），但一个像素都画不出来，被壁纸整块盖住。
+ *   现场表现就是「标题栏下面一大片空白，主区被挤到下半屏」。
+ *   主区之所以没事，是因为 .shell-main 自己有 position: relative + z-index: 5
+ *   （glass.css:1064-1066）；侧栏没事是因为 .sb 是 fixed + z-index: 10。
+ *   这两条横幅一直缺这一对属性，于是「环境告警」从来没露过面 ——
+ *   不是没触发，是画在壁纸底下。
+ *   层级取 --z-content(5) 与主区同层：它和主区不重叠，同层不会打架，
+ *   同时又低于侧栏(10)，收起/展开时不会盖到侧栏上去。
+ */
+.app__fatal,
+.app__warn {
+  position: relative;
+  z-index: var(--z-content);
+  flex: 0 0 auto;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  /* 让位侧栏之后它不再是「贴边的通栏」，而是一块悬在内容区里的条 ——
+   * 四边都得有边和圆角，否则缺一条边看起来像没画完。 */
+  margin: var(--sb-margin) var(--sb-margin) 0;
+  border-radius: var(--r-lg);
+}
+
+/* 让位悬浮侧栏 —— 和 .envset 同一个毛病，只是它更隐蔽。
+ *
+ * 侧栏是 position: fixed（glass.css 的 .sb），不占文档流；横幅是 .app 的普通流子项，
+ * 默认从 x=0 铺满整宽。于是横幅左半截（那个 ▲ 和第一行文字的开头）
+ * 正好落在侧栏底下，用户看到的是「一句话从中间开始，前面缺了」。
+ * 现场截图里就是「…装插件，只影响「启动 / 退出 DSH」）」从侧栏右边缘冒出来。
+ *
+ * 让位量与 .shell-main / .envset 完全一致，收起态盯 .sb--collapsed 自己的类。
+ */
+.app__warn,
+.app__fatal {
+  margin-left: calc(var(--sb-w-expanded) + var(--sb-margin) * 2);
+}
+
+.app:has(> .app__body > .sb.sb--collapsed) > .app__warn,
+.app:has(> .app__body > .sb.sb--collapsed) > .app__fatal,
+.app--sb-collapsed > .app__warn,
+.app--sb-collapsed > .app__fatal {
+  margin-left: calc(var(--sb-w-collapsed) + var(--sb-margin) * 2);
+}
+
+.app__fatal-text,
+.app__warn-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.app__warn-line {
+  display: block;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+.app__fatal-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+  margin-left: var(--space-3);
+}
+
+/* 视图切换小条 */
+.subbar {
+  flex: 0 0 var(--topbar-h);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg-1);
+}
+
+.subbar__tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  height: 100%;
+}
+
+.subbar__tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--fg-1);
+  font: inherit;
+  font-size: var(--fs-md);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+
+.subbar__tab::after {
+  content: '';
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: -1px;
+  height: 2px;
+  background: transparent;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.subbar__tab:hover:not(.is-active) {
+  color: var(--fg-0);
+  background: var(--bg-hover);
+}
+
+.subbar__tab.is-active {
+  color: var(--fg-0);
+}
+
+.subbar__tab.is-active::after {
+  background: var(--accent);
+}
+
+.subbar__count {
+  font-size: var(--fs-xs);
+  color: var(--fg-2);
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  line-height: 15px;
+}
+
+.subbar__meta {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--fg-1);
+  min-width: 0;
+  max-width: 55%;
+}
+
+/* =============================== 标题栏 =============================== */
+
+.titlebar {
+  flex: 0 0 var(--titlebar-h);
+  display: flex;
+  align-items: stretch;
+  height: var(--titlebar-h);
+  /* 原先是 --space-3（12px）：那只是「离窗口左沿 12」。可侧栏的品牌 logo 站在
+   * 外边距 10 + 面板 1px 边框 + 内边距 12 = 23px 上 —— 两个 logo 的左沿差 17px，
+   * 就是「左上角和侧边栏的图标有点偏移」。
+   * 现在这里吃侧栏那条链本身（--brand-x，定义见文件末尾「品牌锁定对位」一节）：
+   * 「窗口左沿 → 第一个 logo 图标」两处从此是同一个数，改一边两边一起走。 */
+  padding-left: var(--brand-x);
+  background: var(--bg-0);
+  border-bottom: 1px solid var(--border-soft);
+  user-select: none;
+  -webkit-app-region: drag;
+  -webkit-user-select: none;
+}
+
+.titlebar[data-focused='false'] {
+  opacity: 0.82;
+}
+
+.titlebar__brand {
+  display: flex;
+  align-items: center;
+  /* 和侧栏品牌行的 gap 用同一个值：glass.css 的 `.sb__brand` 是 --sp-2h(10)。
+   * logo 盒子一样宽之后，第二列（应用名 / 插件台）也要落在同一条竖线上，
+   * 否则「图标对齐了、文字差 2px」，仍然读作没对齐。 */
+  gap: var(--sp-2h);
+  flex: 0 0 auto;
+}
+
+.titlebar__logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.titlebar__app {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--fg-0);
+  letter-spacing: 0.01em;
+}
+
+.titlebar__profile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: var(--space-3);
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--border);
+  min-width: 0;
+  max-width: 46%;
+}
+
+.titlebar__profile-name {
+  font-size: var(--fs-xs);
+  color: var(--fg-1);
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.titlebar__profile-meta {
+  font-size: var(--fs-xxs);
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+
+.titlebar__drag {
+  flex: 1 1 auto;
+  min-width: var(--space-6);
+}
+
+.titlebar__controls {
+  display: flex;
+  flex: 0 0 auto;
+  -webkit-app-region: no-drag;
+}
+
+/* 三个窗口按钮的垂直居中：这里**故意**保持 height:100%，不改 38px。
+ * 算清楚：.titlebar 是 38px 的边框盒，底下压着 1px 下边框，内容盒只有 37px，
+ * 所以 height:100% 解析成 37 —— 按钮盒比「38 的标题栏」矮 1px，重心看似偏上 0.5px。
+ * 但眼睛看的是图标本体：.icon-btn 是 inline-flex + align/justify center 且无内边距
+ * （base.css:244-254），10px 的图标居中于 37px 的按钮盒；品牌 logo 的 20px 图标也
+ * 居中于同一个 37px 行盒 —— 两者几何中心都在 y=18.67，实测都是 28 device px，
+ * 彼此是齐的。改成 height:var(--titlebar-h) 只会把图标单独挪 0.33px，
+ * 却会让按钮盒（含 hover 底）盖住标题栏那条 1px 分隔线（子元素画在父边框之上），
+ * 一 hover 分隔线就断一截。那 1px 的差就是分隔线本身，不是错位。 */
+.titlebar__btn {
+  width: 44px;
+  height: 100%;
+  border-radius: 0;
+  color: var(--fg-1);
+}
+
+.titlebar__btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--fg-0);
+}
+
+.titlebar__btn--close:hover:not(:disabled) {
+  background: var(--danger);
+  color: var(--fg-inverse);
+}
+
+.titlebar__btn:active:not(:disabled) {
+  background: var(--bg-active);
+}
+
+.titlebar__btn--close:active:not(:disabled) {
+  background: var(--danger-hi);
+  color: var(--fg-inverse);
+}
+
+/* =============================== 侧栏 =============================== */
+
+.sidebar {
+  flex: 0 0 var(--sidebar-w);
+  width: var(--sidebar-w);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-0);
+}
+
+.sidebar__scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-2) var(--space-2);
+  min-height: 0;
+}
+
+.sidebar__section + .sidebar__section {
+  margin-top: var(--space-1);
+}
+
+.sidebar__count {
+  font-size: var(--fs-xxs);
+  color: var(--fg-2);
+  margin-left: auto;
+}
+
+.sidebar .section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0 var(--space-2) var(--space-2);
+}
+
+.sidebar__empty {
+  margin: 0;
+  padding: var(--space-2);
+  font-size: var(--fs-sm);
+  color: var(--fg-2);
+  line-height: 1.5;
+}
+
+/* profile 列表 */
+.profiles,
+.filters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.profiles__item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'name badge'
+    'meta badge';
+  align-items: center;
+  gap: 1px var(--space-2);
+  padding: 6px var(--space-2);
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: transparent;
+  color: var(--fg-1);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.profiles__item:hover {
+  background: var(--bg-hover);
+  color: var(--fg-0);
+}
+
+.profiles__item:active {
+  background: var(--bg-active);
+}
+
+.profiles__item.is-active {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+  color: var(--fg-0);
+}
+
+.profiles__name {
+  grid-area: name;
+  font-size: var(--fs-md);
+  font-weight: 500;
+  min-width: 0;
+}
+
+.profiles__meta {
+  grid-area: meta;
+  font-size: var(--fs-xxs);
+  color: var(--fg-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profiles__badge {
+  grid-area: badge;
+  justify-self: end;
+  align-self: start;
+}
+
+/* 过滤器 */
+.filters__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px var(--space-2);
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: transparent;
+  color: var(--fg-1);
+  font: inherit;
+  font-size: var(--fs-md);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.filters__item:hover {
+  background: var(--bg-hover);
+  color: var(--fg-0);
+}
+
+.filters__item:active {
+  background: var(--bg-active);
+}
+
+.filters__item.is-active {
+  background: var(--bg-2);
+  border-left-color: var(--accent);
+  color: var(--fg-0);
+  font-weight: 500;
+}
+
+.filters__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filters__count {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  color: var(--fg-2);
+  min-width: 18px;
+  text-align: right;
+}
+
+.filters__item.is-active .filters__count {
+  color: var(--accent);
+}
+
+.sidebar__switch {
+  margin: var(--space-3) var(--space-2) 0;
+  font-size: var(--fs-sm);
+  color: var(--fg-1);
+}
+
+/* 侧栏底部 */
+.sidebar__foot {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--border-soft);
+  padding: var(--space-2);
+  background: var(--bg-0);
+}
+
+.sidebar__envline {
+  margin: 0 0 var(--space-1);
+  padding: 0 var(--space-1);
+  font-size: var(--fs-xxs);
+  color: var(--fg-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.sidebar__actions .btn {
+  flex: 1 1 0;
+  justify-content: center;
+}
+
+/* =============================== 环境面板 =============================== */
+
+.env {
+  border-top: 1px solid var(--border-soft);
+}
+
+.env__toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
+  border: 0;
+  background: transparent;
+  color: var(--fg-1);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+
+.env__toggle:hover {
+  color: var(--fg-0);
+  background: var(--bg-hover);
+}
+
+.env__caret {
+  display: inline-block;
+  width: 12px;
+  text-align: center;
+  font-size: 9px;
+  color: var(--fg-2);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.env__caret.is-open {
+  transform: rotate(90deg);
+}
+
+.env__title {
+  font-weight: 500;
+}
+
+.env__warn-badge {
+  margin-left: auto;
+}
+
+.env__dot {
+  margin-left: auto;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--ok);
+}
+
+.env__state {
+  font-size: var(--fs-xxs);
+  color: var(--fg-2);
+}
+
+.env__body {
+  padding: 0 var(--space-1) var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.env__row {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+.env__key {
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+
+.env__val {
+  color: var(--fg-1);
+  min-width: 0;
+}
+
+.env__val--warn {
+  color: var(--warn);
+}
+
+.env__val--danger {
+  color: var(--danger);
+}
+
+.env__val--mute {
+  color: var(--fg-2);
+}
+
+.env__empty {
+  margin: var(--space-2) 0;
+  font-size: var(--fs-xs);
+  color: var(--fg-2);
+}
+
+.env__warnings {
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--warn-line);
+  background: var(--warn-soft);
+  border-radius: var(--radius-sm);
+}
+
+.env__warnings-title {
+  margin: 0 0 var(--space-1);
+  font-size: var(--fs-xxs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--warn);
+}
+
+.env__warnings ul {
+  margin: 0;
+  padding-left: 14px;
+  font-size: var(--fs-xs);
+  color: var(--warn);
+  line-height: 1.5;
+}
+
+.env__warnings li + li {
+  margin-top: 3px;
+}
+
+.env__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.env__err {
+  font-size: var(--fs-xs);
+  color: var(--danger);
+  min-width: 0;
+  word-break: break-word;
+}
+
+/* =============================== 工具条 =============================== */
+
+.plist {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg-1);
+}
+
+.toolbar__search {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 140px;
+  max-width: 420px;
+  display: flex;
+  align-items: center;
+}
+
+.toolbar__search-icon {
+  position: absolute;
+  left: 9px;
+  color: var(--fg-2);
+  font-size: var(--fs-md);
+  pointer-events: none;
+}
+
+.toolbar__input {
+  width: 100%;
+  padding-left: 26px;
+  padding-right: 62px;
+}
+
+.toolbar__input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.toolbar__clear {
+  position: absolute;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+}
+
+.toolbar__hint {
+  position: absolute;
+  right: 6px;
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+.toolbar__input:focus ~ .toolbar__hint {
+  opacity: 0;
+}
+
+.toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.toolbar__switch {
+  font-size: var(--fs-xs);
+  color: var(--fg-1);
+  white-space: nowrap;
+  margin-right: var(--space-1);
+}
+
+/* 检查更新进度条 */
+.checkbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 6px var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg-2);
+}
+
+.checkbar__text {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--fg-1);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.checkbar__done {
+  color: var(--ok);
+  font-weight: 500;
+}
+
+.checkbar .progress {
+  flex: 0 0 180px;
+}
+
+.progress--full .progress__fill {
+  background: var(--ok);
+}
+
+.plist__banner {
+  flex: 0 0 auto;
+  margin: 0;
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+}
+
+/* 表头 + 行 */
+.plist__head,
+.prow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 116px max-content;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+}
+
+.plist__head {
+  flex: 0 0 26px;
+  height: 26px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-1);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+}
+
+.plist__col {
+  font-size: var(--fs-xxs);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+
+.plist__col--ops {
+  text-align: right;
+}
+
+.plist__body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* 空态 / 错误态在列表区里垂直居中 */
+.plist__body > .empty {
+  flex: 1 1 auto;
+}
+
+.plist__rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.plist__foot {
+  flex: 0 0 30px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  border-top: 1px solid var(--border);
+  background: var(--bg-1);
+  font-size: var(--fs-xs);
+  color: var(--fg-2);
+  overflow: hidden;
+}
+
+.plist__foot-gap {
+  flex: 1 1 auto;
+}
+
+.plist__foot-op {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 40%;
+  color: var(--fg-1);
+}
+
+/* 单行插件 */
+.prow {
+  min-height: var(--row-h);
+  padding-top: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-soft);
+  border-left: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+
+.prow:hover {
+  background: var(--bg-hover);
+}
+
+.prow.is-selected {
+  background: var(--bg-2);
+  border-left-color: var(--accent);
+}
+
+.prow.is-updatable .prow__name {
+  color: var(--fg-0);
+}
+
+.prow.is-missing {
+  opacity: 0.6;
+}
+
+.prow.is-disabled {
+  opacity: 0.66;
+  filter: saturate(0.45);
+}
+
+.prow.is-disabled:hover,
+.prow.is-missing:hover {
+  opacity: 0.88;
+}
+
+.prow__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.prow__line1 {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.prow__name {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--fg-0);
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+}
+
+.prow__name:hover {
+  color: var(--accent-hi);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prow__badge {
+  flex: 0 0 auto;
+}
+
+.prow__line2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.prow__desc {
+  min-width: 0;
+  font-size: var(--fs-sm);
+  color: var(--fg-2);
+  line-height: 1.4;
+}
+
+.prow__size {
+  flex: 0 0 auto;
+  font-size: var(--fs-xxs);
+  color: var(--fg-3);
+}
+
+.prow__versions {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+}
+
+.prow__ver {
+  font-size: var(--fs-sm);
+  color: var(--fg-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prow__latest {
+  font-size: var(--fs-xxs);
+  color: var(--fg-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prow__latest.is-updatable {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.prow__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+  opacity: 0.72;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.prow:hover .prow__actions,
+.prow.is-selected .prow__actions,
+.prow:focus-within .prow__actions {
+  opacity: 1;
+}
+
+.prow__actions .btn {
+  padding-inline: 8px;
+}
+
+.prow__danger {
+  color: var(--fg-1);
+}
+
+.prow__danger:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger-line);
+  background: var(--danger-soft);
+}
+
+/* 骨架屏（列表加载中） */
+.skeleton-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.skeleton-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 116px 196px;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--row-h);
+  padding: 6px var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.skeleton-row__main {
+  min-width: 0;
+}
+
+.skeleton--line {
+  display: block;
+  height: 9px;
+  border-radius: var(--radius-xs);
+}
+
+.skeleton--sm {
+  height: 7px;
+  margin-top: 7px;
+  opacity: 0.7;
+}
+
+.skeleton--pill {
+  display: block;
+  height: 15px;
+  width: 62px;
+  border-radius: var(--radius-sm);
+  opacity: 0.8;
+}
+
+.skeleton--wide {
+  width: 148px;
+  justify-self: end;
+}
+
+.hit__main .skeleton--line + .skeleton--line {
+  margin-top: 8px;
+}
+
+/* =============================== 详情面板 =============================== */
+
+.detail {
+  flex: 0 0 var(--detail-w);
+  width: var(--detail-w);
+  max-width: 46vw;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--border);
+  background: var(--bg-2);
+}
+
+.detail__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.detail__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.detail__name {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--fg-0);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.detail__close {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  font-size: 11px;
+}
+
+.detail__desc {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--fg-1);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg-1);
+}
+
+.detail__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  padding: var(--space-2) var(--space-3) var(--space-6);
+}
+
+.detail__section + .detail__section {
+  margin-top: var(--space-4);
+}
+
+.detail__section .section-title {
+  margin-bottom: var(--space-2);
+}
+
+.detail__row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: var(--space-2);
+  padding: 3px 0;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  align-items: baseline;
+}
+
+.detail__k {
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+
+.detail__v {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--fg-0);
+  word-break: break-word;
+}
+
+.detail__aside {
+  color: var(--fg-2);
+  font-size: var(--fs-xs);
+}
+
+.detail__upd {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.detail__err {
+  color: var(--danger);
+  word-break: break-word;
+}
+
+.detail__spec,
+.detail__path {
+  font-size: var(--fs-xs);
+  color: var(--fg-1);
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.detail__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: var(--space-2);
+}
+
+.detail__chip {
+  font-size: var(--fs-xxs);
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--fg-2);
+  background: var(--bg-1);
+}
+
+.detail__note {
+  margin-top: var(--space-2);
+}
+
+/* =============================== 安装面板 =============================== */
+
+.install {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4);
+  gap: var(--space-4);
+}
+
+.install__tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+.install__tab {
+  position: relative;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--fg-1);
+  font: inherit;
+  font-size: var(--fs-md);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+
+.install__tab::after {
+  content: '';
+  position: absolute;
+  left: var(--space-2);
+  right: var(--space-2);
+  bottom: -1px;
+  height: 2px;
+  background: transparent;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.install__tab:hover:not(.is-active) {
+  color: var(--fg-0);
+  background: var(--bg-hover);
+}
+
+.install__tab.is-active {
+  color: var(--fg-0);
+}
+
+.install__tab.is-active::after {
+  background: var(--accent);
+}
+
+.install__body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.install__pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 860px;
+}
+
+.install__preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-2);
+}
+
+.install__preview--err {
+  border-color: var(--danger-line);
+  background: var(--danger-soft);
+}
+
+.install__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+  color: var(--fg-1);
+}
+
+.install__line {
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--fg-0);
+}
+
+.install__err {
+  color: var(--danger);
+  word-break: break-word;
+}
+
+.install__warn {
+  margin: 0;
+}
+
+.install__warns {
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: var(--fs-sm);
+  color: var(--warn);
+  line-height: 1.55;
+}
+
+.install__warnline::marker {
+  color: var(--warn);
+}
+
+/* 键值表 */
+.kv {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--fs-sm);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--border-soft);
+  margin-top: var(--space-1);
+}
+
+.kv__k {
+  color: var(--fg-2);
+  font-size: var(--fs-xs);
+  padding-top: 1px;
+}
+
+.kv__v {
+  color: var(--fg-0);
+  min-width: 0;
+  word-break: break-word;
+}
+
+.kv__v.mono {
+  font-size: var(--fs-xs);
+}
+
+/* npm 搜索结果 */
+.install__hits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.hit {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border-soft);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.hit:last-child {
+  border-bottom: 0;
+}
+
+.hit:hover {
+  background: var(--bg-hover);
+}
+
+.hit__main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.hit__name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--fs-md);
+  color: var(--fg-0);
+}
+
+.hit__desc {
+  font-size: var(--fs-sm);
+  color: var(--fg-1);
+  line-height: 1.45;
+}
+
+.hit__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font-size: var(--fs-xxs);
+  color: var(--fg-3);
+}
+
+.hit__act {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+  padding-top: 2px;
+}
+
+/* 版本面板的外壳：给 VersionPicker 一个稳定的上下留白，本身不画边框
+   （边框和分组线由 vpick-* 自己负责，避免两层框套在一起） */
+.install__picker {
+  margin-top: var(--space-3);
+}
+
+.detail__picker {
+  flex: 0 0 auto;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+/* =============================== 日志抽屉 =============================== */
+
+.logdrawer {
+  flex: 0 0 var(--log-h);
+  height: var(--log-h);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+
+.logdrawer__head {
+  flex: 0 0 30px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-1);
+}
+
+.logdrawer__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--fg-0);
+  min-width: 0;
+}
+
+.logdrawer__op {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--fg-1);
+  max-width: 320px;
+  min-width: 0;
+}
+
+.logdrawer__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.logdrawer__box {
+  flex: 1 1 auto;
+  overflow: auto;
+  min-height: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  scroll-behavior: auto;
+}
+
+.logdrawer__box:focus-visible {
+  outline-offset: -2px;
+}
+
+.logdrawer__empty {
+  color: var(--fg-2);
+  font-size: var(--fs-sm);
+  padding: var(--space-2) 0;
+}
+
+.logline {
+  display: grid;
+  grid-template-columns: 58px 30px minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--fg-1);
+}
+
+.logline__at {
+  color: var(--fg-3);
+  font-size: var(--fs-xxs);
+  font-variant-numeric: tabular-nums;
+}
+
+.logline__chan {
+  font-size: var(--fs-xxs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-3);
+}
+
+.logline__text {
+  min-width: 0;
+}
+
+.logline--stdout {
+  color: var(--fg-0);
+}
+
+.logline--stderr .logline__text,
+.logline--stderr .logline__chan {
+  color: var(--danger);
+}
+
+.logline--system .logline__text,
+.logline--system .logline__chan {
+  color: var(--accent);
+}
+
+.logline--progress {
+  color: var(--fg-1);
+  opacity: 0.9;
+}
+
+.logline--progress .logline__text {
+  color: var(--fg-1);
+}
+
+.logdrawer__result {
+  flex: 0 0 auto;
+  max-height: 132px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+  background: var(--bg-1);
+  padding: var(--space-2) var(--space-3);
+}
+
+.logdrawer__result.is-ok {
+  border-top-color: var(--ok-line);
+}
+
+.logdrawer__result.is-fail {
+  border-top-color: var(--danger-line);
+}
+
+.logdrawer__result-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--fs-xs);
+}
+
+.logdrawer__result-title {
+  flex: 0 0 auto;
+  font-weight: 600;
+  color: var(--fg-0);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: var(--fs-xxs);
+}
+
+.is-ok .logdrawer__result-title {
+  color: var(--ok);
+}
+
+.is-fail .logdrawer__result-title {
+  color: var(--danger);
+}
+
+.logdrawer__restart {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: var(--fs-xxs);
+}
+
+.logdrawer__changes {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.change {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr) 150px;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--fs-xxs);
+  color: var(--fg-1);
+}
+
+.change__act {
+  justify-self: start;
+}
+
+.change__act--added {
+  color: var(--ok);
+  border-color: var(--ok-line);
+  background: var(--ok-soft);
+}
+
+.change__act--removed {
+  color: var(--danger);
+  border-color: var(--danger-line);
+  background: var(--danger-soft);
+}
+
+.change__act--updated {
+  color: var(--accent);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+.change__act--bundled,
+.change__act--unbundled {
+  color: var(--warn);
+  border-color: var(--warn-line);
+  background: var(--warn-soft);
+}
+
+.logdrawer__nochange {
+  font-size: var(--fs-xs);
+  margin-top: var(--space-1);
+}
+
+/* =============================== 弹窗 =============================== */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: var(--scrim);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 88vh;
+  width: 560px;
+  max-width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+}
+
+.dialog--settings {
+  width: 640px;
+}
+
+/*
+ * 设置面板要能「边改边看」。
+ *
+ * 整屏压暗会把用户刚改的东西一起压掉 —— 他把侧栏调宽、把玻璃调糊，然后隔着 0.62 的
+ * 黑纱去看，观感差异全被吃掉，于是结论是「改了没反应」。这一层只留一半深度：
+ * 侧栏和壁纸就在对话框旁边，看得见才算实时预览。
+ *
+ * 用 :has() 而不是给 TSX 加 modifier 类 —— 这类「只影响一层遮罩」的差异不该
+ * 反过来污染组件结构。
+ */
+.overlay:has(> .dialog--settings) {
+  background: color-mix(in srgb, var(--scrim) 45%, transparent);
+}
+
+.dialog--confirm {
+  width: 452px;
+}
+
+.dialog--danger {
+  border-color: var(--danger-line);
+}
+
+.dialog__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--bg-1);
+}
+
+.dialog__title {
+  flex: 1 1 auto;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--fg-0);
+}
+
+.dialog--danger .dialog__title {
+  color: var(--danger);
+}
+
+.dialog__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dialog__message {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--fg-0);
+  white-space: pre-wrap;
+}
+
+.dialog__bullets {
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: var(--fs-sm);
+  color: var(--fg-1);
+  line-height: 1.6;
+}
+
+.dialog__bullets li + li {
+  margin-top: 2px;
+}
+
+.dialog__foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border-soft);
+  background: var(--bg-1);
+}
+
+.dialog__foot-note {
+  flex: 1 1 auto;
+  font-size: var(--fs-xxs);
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.dialog__foot-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+}
+
+.settings__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.settings__group .section-title {
+  margin-bottom: 0;
+}
+
+.settings__check {
+  align-items: flex-start;
+}
+
+.settings__check > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings__check-label {
+  font-size: var(--fs-sm);
+  color: var(--fg-0);
+}
+
+/* =============================== Toast =============================== */
+
+.toasts {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: var(--toast-w);
+  max-width: calc(100vw - var(--space-8));
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-left-width: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-3);
+  box-shadow: var(--shadow-2);
+  animation: toast-in var(--dur-base) var(--ease-out);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.toast--info {
+  border-left-color: var(--accent);
+}
+
+.toast--success {
+  border-left-color: var(--ok);
+}
+
+.toast--warn {
+  border-left-color: var(--warn);
+}
+
+.toast--error {
+  border-left-color: var(--danger);
+}
+
+.toast__mark {
+  flex: 0 0 auto;
+  width: 14px;
+  font-size: var(--fs-sm);
+  line-height: 18px;
+  text-align: center;
+}
+
+.toast--info .toast__mark {
+  color: var(--accent);
+}
+
+.toast--success .toast__mark {
+  color: var(--ok);
+}
+
+.toast--warn .toast__mark {
+  color: var(--warn);
+}
+
+.toast--error .toast__mark {
+  color: var(--danger);
+}
+
+.toast__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.toast__title {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--fg-0);
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.toast__detail {
+  margin-top: 2px;
+  font-size: var(--fs-xs);
+  color: var(--fg-1);
+  line-height: 1.45;
+  word-break: break-word;
+  /* 68px ≈ 4 行，而安装失败的原因常常更长（12 个包的名字加原因）；
+     被裁掉的那半截正是用户唯一能拿来求助的信息。放宽到 10 行左右，超过就在这块内部滚动。 */
+  max-height: 168px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.toast__close {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  font-size: 10px;
+}
+
+/* =============================== 空态 =============================== */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  text-align: center;
+  padding: var(--space-10) var(--space-6);
+  max-width: 560px;
+  margin: 0 auto;
+  color: var(--fg-1);
+}
+
+.empty--compact {
+  padding: var(--space-6) var(--space-4);
+}
+
+.empty__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--fg-2);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.empty--warn .empty__icon {
+  color: var(--warn);
+  border-color: var(--warn-line);
+  background: var(--warn-soft);
+}
+
+.empty--danger .empty__icon {
+  color: var(--danger);
+  border-color: var(--danger-line);
+  background: var(--danger-soft);
+}
+
+.empty__title {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--fg-0);
+}
+
+.empty--compact .empty__title {
+  font-size: var(--fs-md);
+}
+
+.empty__hint {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--fg-1);
+  max-width: 460px;
+}
+
+.empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
+.empty__foot {
+  margin: var(--space-1) 0 0;
+  font-size: var(--fs-xxs);
+  color: var(--fg-2);
+  word-break: break-word;
+  max-width: 480px;
+}
+
+.empty--danger .empty__foot {
+  color: var(--danger);
+}
+
+/* =============================== 响应式收口 =============================== */
+
+@media (max-width: 1240px) {
+  :root {
+    --detail-w: 340px;
+  }
+
+  .subbar__meta {
+    max-width: 44%;
+  }
+}
+
+@media (max-width: 1080px) {
+  :root {
+    --sidebar-w: 236px;
+    --detail-w: 300px;
+  }
+
+  .plist__head,
+  .prow,
+  .skeleton-row {
+    grid-template-columns: minmax(0, 1fr) 96px max-content;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+  }
+
+  .toolbar__search {
+    max-width: none;
+    flex-basis: 100%;
+  }
+
+  .toolbar__actions {
+    width: 100%;
+  }
+}
+
+@media (max-height: 720px) {
+  :root {
+    --log-h: 190px;
+    --row-h: 46px;
+  }
+}
+
+/* =============================== 附：代理测速 / DSH 进程 / 清单导入 =============================== */
+/* 以下都是新类名，只引用 tokens.css 的变量；不动上面任何既有规则。 */
+
+/* ---- 代理测速结果（SettingsDialog 的 proxy 字段下方） ---- */
+
+.pxtest {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+.pxtest__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 1px var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+}
+
+.pxtest--ok .pxtest__tag {
+  color: var(--ok);
+  background: var(--ok-soft);
+  border-color: var(--ok-line);
+}
+
+.pxtest--fail .pxtest__tag {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: var(--danger-line);
+}
+
+.pxtest--busy {
+  color: var(--fg-2);
+}
+
+.pxtest__text {
+  color: var(--fg-2);
+}
+
+.pxtest__target {
+  min-width: 0;
+  font-size: var(--fs-xxs);
+  color: var(--fg-1);
+  word-break: break-all;
+}
+
+.pxtest--fail .pxtest__target {
+  color: var(--fg-2);
+}
+
+.pxtest__note {
+  font-size: var(--fs-xxs);
+  color: var(--fg-2);
+}
+
+/* ---- 设置里的托盘开关 / 导出路径 ---- */
+
+.settings__switch-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.settings__switch {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--fg-0);
+}
+
+.settings__path {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+}
+
+.settings__path-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-xxs);
+  color: var(--fg-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- 确认弹窗的明细 / 横幅 / 附注 ---- */
+
+.dialog__kv {
+  margin-top: 0;
+}
+
+.dialog__banner {
+  margin: 0;
+  font-size: var(--fs-xs);
+}
+
+.dialog__notes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+  color: var(--fg-2);
+  line-height: 1.55;
+}
+
+.dialog__note {
+  min-width: 0;
+  word-break: break-word;
+}
+
+.dialog__note::before {
+  content: '·';
+  margin-right: var(--space-2);
+  color: var(--fg-3);
+}
+
+.dialog--busy {
+  border-color: var(--accent-line);
+}
+
+/* ---- DSH 进程开关（Sidebar 底部） ---- */
+
+.dshctl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
+  border-top: 1px solid var(--border-soft);
+}
+
+.dshctl__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.dshctl__dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--fg-3);
+  box-shadow: 0 0 0 3px var(--bg-sunken);
+}
+
+.dshctl__dot.is-on {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
+  animation: dshctl-pulse 2.4s var(--ease-in-out) infinite;
+}
+
+.dshctl__dot.is-unknown {
+  background: var(--warn);
+  box-shadow: 0 0 0 3px var(--warn-soft);
+}
+
+@keyframes dshctl-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.dshctl__state {
+  font-size: var(--fs-sm);
+  color: var(--fg-0);
+  white-space: nowrap;
+}
+
+.dshctl__pids {
+  min-width: 0;
+  font-size: var(--fs-xxs);
+  color: var(--fg-2);
+}
+
+.dshctl__refresh {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.dshctl__banner {
+  margin: 0;
+  font-size: var(--fs-xs);
+}
+
+.dshctl__banner-text {
+  min-width: 0;
+  word-break: break-word;
+}
+
+.dshctl__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.dshctl__btn {
+  flex: 1 1 0;
+  justify-content: center;
+}
+
+.dshctl__path {
+  margin: 0;
+  font-size: var(--fs-xxs);
+  color: var(--fg-2);
+}
+
+.dshctl__hint {
+  margin: 0;
+  font-size: var(--fs-xxs);
+  color: var(--fg-3);
+  line-height: 1.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dshctl__dot.is-on {
+    animation: none;
+  }
+}
+
+/* ---- 导入清单（InstallPanel 第四个 tab） ---- */
+
+.mfst__file {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.mfst__file-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.mfst__file-input:disabled {
+  cursor: default;
+}
+
+/* 真实的 input 藏在按钮底下，点哪里都算点它 */
+.mfst__file-btn {
+  pointer-events: none;
+}
+
+.mfst__file:hover .mfst__file-btn {
+  border-color: var(--border-strong);
+  background: var(--bg-hover);
+}
+
+.mfst__file:active .mfst__file-btn {
+  background: var(--bg-active);
+}
+
+.mfst__file-input:focus-visible + .mfst__file-btn {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.mfst__file-input:disabled + .mfst__file-btn {
+  opacity: 0.5;
+}
+
+.mfst__fname {
+  min-width: 0;
+  max-width: 240px;
+  font-size: var(--fs-xs);
+  color: var(--fg-1);
+}
+
+.mfst__text {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  resize: vertical;
+  /* base.css 里 .textarea 的通用高度是 30px（给单行输入用的），
+     清单是整份 JSON，要给足可视行数 —— 高度和上下内边距在这里覆写。 */
+  height: auto;
+  min-height: 168px;
+  padding: var(--space-2);
+}
+
+.mfst__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+.mfst__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border-soft);
+  font-size: var(--fs-sm);
+}
+
+.mfst__item:last-child {
+  border-bottom: 0;
+}
+
+.mfst__item-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mfst__more {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--fs-xs);
+}
+
+/* =============================== 附：已安装工具栏的「导出清单」按钮 =============================== */
+/* 为什么加：导出清单这个动作原先只藏在「设置」对话框里，Master 在「已安装」页找不到入口。
+   现在把它摆到工具条上（刷新 与 ＋安装插件 之间），并且要一眼看得见：
+   - 底色仍是 ghost 家族（.btn--ghost 的透明底），但覆盖成「强调色描边 + 淡强调底 + 强调色字」，
+     权重正好落在 刷新（透明 ghost）和 ＋安装插件（实心 primary）中间，不抢主按钮的焦点；
+   - 只引用 tokens.css 的变量，不硬编码色值；
+   - 选择器带 :not(:disabled) / :disabled，是为了覆盖 base.css 里 .btn--ghost:hover 与 .btn:disabled
+     的同权重规则（同名权重下靠后加载的 components.css 生效）。 */
+
+.toolbar__export {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent-hi);
+  font-weight: 500;
+}
+
+.toolbar__export:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--fg-0);
+}
+
+.toolbar__export:active:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--bg-active);
+  transform: translateY(1px);
+}
+
+.toolbar__export:disabled {
+  border-color: var(--border-soft);
+  background: var(--bg-1);
+  color: var(--fg-3);
+}
+
+/* ================================================================================
+ * 附二：品牌锁定对位 + 侧栏底部留白（跨文件覆盖 glass.css）
+ *
+ * 为什么这些规则写在这里、还要带 `.app__body > .sb` 前缀：
+ *   `.sb` / `.sb__brand` / `.sb__logo` / `.sb__user` / `.sb--collapsed` 这一大片全部
+ *   住在 glass.css，本文件里根本没有它们；而 main.tsx 先引 components.css、后引
+ *   glass.css，两边同特异性时后加载的 glass.css 赢（这就是当初为什么先写了 .titlebar
+ *   的那条 padding-left 也没生效过）。
+ *   所以下面统一抬到 (0,3,0) 及以上的特异性 —— 在设计层面赢，不用 !important：
+ *   !important 会连别人日后正当的覆盖一起挡掉，属于把坑留给下一个人。
+ *   `.app__body > .sb` 这个父子选择器是成立的：App.tsx:198-199 里 SidebarShell 就是
+ *   app__body 的直接子元素（已核对，不是推测）。
+ * ============================================================================== */
+
+:root {
+  /* 面板自己那条 1px 边框（glass.css 的 `.sb { border: 1px solid ... }`）。
+   * 它不是装饰：侧栏内容列的起点 = --sb-margin(10) + 这条边框(1) + --sb-pad-x(12) = 23，
+   * 主控实测 `.sb__logo` 的 x = 22.67 就是它。glass.css 改边框宽度时这里必须一起改。 */
+  --sb-edge: 1px;
+
+  /* 窗口左沿 → 第一个 logo 图标 的距离。
+   * 两个品牌区从此走同一条算式：
+   *   侧栏：外边距 --sb-margin(10) + 边框 1 + 内边距 --sb-pad-x(12) = 23
+   *   标题栏：没有外边距也没有边框，只有一条 padding-left，直接吃这条 calc
+   * 「这两个数必须一起改」：--sb-margin / --sb-pad-x / --sb-edge 动任何一个，
+   * 标题栏的品牌区都会跟着走，不会留一个写死的旧数字在原地。 */
+  --brand-x: calc(var(--sb-margin) + var(--sb-edge) + var(--sb-pad-x));
+
+  /* logo 盒子与图标本体：两处共用同一对数字。
+   * 侧栏那边（glass.css `.sb__logo`）是一个 32×32 的圆底 + 20×20 的图标居中；
+   * 标题栏原来把 20 的图标直接摆在那儿、没有圆底 —— 于是「盒子左沿」对上了、
+   * 「图标本体左沿」还差 (32-20)/2 = 6px。两边盒子是同一对数字，
+   * --brand-logo-inset 才能同时管住两边。 */
+  --brand-logo-box: 32px;
+  --brand-logo-glyph: 20px;
+  /* 图标在圆底里居中要内缩多少：(32 - 20) / 2 = 6px */
+  --brand-logo-inset: calc((var(--brand-logo-box) - var(--brand-logo-glyph)) / 2);
+
+  /* 品牌行高度（glass.css 里是 52px 的字面量，这里只为下面那条算式引用它） */
+  --sb-brand-h: 52px;
+
+  /* 侧栏底部内边距 = 「底部最后看得见的东西 → 面板下沿」追平顶部那个光学留白。
+   *   顶部（看得见的东西）：32 的圆底在 52 的品牌行里居中
+   *     → 1(边框) + 8(顶内边距) + (52-32)/2 = 19px   ← 实测 18.67
+   *   底部（看得见的东西）：用户卡自带 4% 实底，卡的下沿就是视觉下沿
+   *     → 1(边框) + 底内边距
+   *   两者相等 ⇒ 底内边距 = 8 + (52-32)/2 = 18px        ← 改完实测口径 18.67
+   * 这条 calc 就是那个等式本身：品牌行高或 logo 盒子一变，底部留白自动跟着改，
+   * 不会再出现「上面改了 52、下面还是老数字」的半截对位。
+   * 为什么不能只写 padding-bottom: 8px：数值上上下都是 8（对称），但品牌行那 20px 的
+   * 高度差一半给了圆底上方（顶部的视觉留白因此是 19 不是 8），而用户卡是贴着自己盒子
+   * 边缘的实底 —— 眼睛量的是看得见的边，19 vs 8 差 11px，所以读作「太靠下」。 */
+  --sb-pad-bottom: calc(var(--sp-2) + (var(--sb-brand-h) - var(--brand-logo-box)) / 2);
+}
+
+/* --------------------------------------------------------------------------------
+ * 1) 标题栏的 logo：补上和侧栏同规格的 32px 圆底
+ *
+ * 20×20 是 titlebar.css 写的（那个文件不归这把），这里不改它，只在外面加一圈「盒子」：
+ *   box-sizing:border-box 下 32 - 2×5(padding) - 2×1(border) = 20
+ *   → 图标本体还是 20，一个像素都没缩放，只是外围多了 6px 的呼吸和一圈描边。
+ * 图标本体左沿 = --brand-x(23) + 边框 1 + padding 5 = 29，
+ * 侧栏那个 img 实测 28.67 —— 落在同一根竖线上（0.33 是 dpr1.5 的取整余量）。
+ * 垂直方向一步没挪：20 的图标原本就在行盒里居中，32 的盒子也居中，图标仍在 y=8.67。
+ * 选择器 (0,3,0) 赢 titlebar.css:8 的 (0,1,0)，也赢它 :23 的失焦分支（那条只管 opacity）。
+ * ----------------------------------------------------------------------------- */
+
+.titlebar .titlebar__brand > .titlebar__logo-img {
+  box-sizing: border-box;
+  width: var(--brand-logo-box);
+  height: var(--brand-logo-box);
+  padding: calc(var(--brand-logo-inset) - var(--sb-edge));
+  border: var(--sb-edge) solid var(--gl-panel-edge);
+  border-radius: var(--r-full);
+  /* 与 glass.css `.sb__logo` 同一个配方：6% 前景色 + 面板描边 */
+  background: color-mix(in srgb, var(--p-mist) 6%, transparent);
+}
+
+/* 侧栏那圈圆底在 glass.css 里是 32/20 两个字面量。这里只把尺寸挂到同一对令牌上
+ * （数值等价、布局零变化），从此「两处 logo 一样大」只有一处出处。 */
+.app__body > .sb .sb__logo {
+  width: var(--brand-logo-box);
+  height: var(--brand-logo-box);
+}
+
+.app__body > .sb .sb__logo img {
+  width: var(--brand-logo-glyph);
+  height: var(--brand-logo-glyph);
+}
+
+/* --------------------------------------------------------------------------------
+ * 2) 侧栏底部留白（展开态）
+ *
+ * glass.css:76 是 `padding: var(--sp-2) 0`（上下各 8）。这里只覆盖下边，
+ * 值取自上面那条等式（= 18px），底边距从 8.67 → 18.67，与顶部的 18.67 相等。
+ * 这 10px 从哪来：面板高度是 top/bottom 钉死的（fixed），所以只能由中间那段弹性空白
+ * 让出 —— `.sb__nav` 目前有约 17px 空转余量、`.sb__spacer` 弹性收缩但有 10px 下限，
+ * 两边都吃得下：导航项一个没动、也没挤出滚动条（详见交付说明里的两种模型）。
+ * ----------------------------------------------------------------------------- */
+
+.app__body > .sb {
+  padding-bottom: var(--sb-pad-bottom);
+}
+
+/* 上面那 10px 从哪出 —— 只能从中间那段弹性空白出（面板是 top/bottom 钉死的），
+ * 而中间有两处可伸缩：`.sb__nav` 和 `.sb__spacer`。这里指定由 nav 吃：
+ *   · nav 的盒子现在 343，它里面的内容只要 326（7 项 34 + 组头 + gap + 自己 8 的 padding），
+ *     那 17px 是盒子底部的空白 —— 缩掉 10 只是把空白变少，一个导航项都不会动、也不会出滚动条；
+ *   · spacer 现在是 17.33，是「状态卡 → 用户卡」那段呼吸（设计文档要求 ↕24，早被挤到
+ *     17.33 了），再让它缩就是二次伤害 —— 主控明确要求这 17px 别挤没。
+ * 所以 spacer 不许收缩：它保持 17.33，差额全让 nav 的空白吸收。
+ * 万一将来面板更矮，nav 还有 min-height:0 + overflow-y:auto 兜底（出滚动条而不是溢出）。 */
+.app__body > .sb .sb__spacer {
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------------
+ * 3) 收起态（--sb-w-collapsed: 64px）
+ *
+ * 收起态那两个底部图标（账号/设置 与 外观）是用户说「太靠下」的那两个。
+ * 它们竖排堆叠，但 `.sb__user` 的 height:46px 是从展开态横排继承下来的：
+ *   内容 = 头像 28 + 间距 8 + 按钮 24 = 60，加上下内边距 8+8 → 需要 76，
+ *   而盒子内容区只有 46-16 = 30 → 溢出 30px，被 justify-content:center 上下各摊 15px，
+ *   最后一枚按钮的下沿离面板下沿只剩约 2px（视觉上就是「贴到底了」）。
+ * 高度交给内容算：盒子 76，配合上面 18px 的底内边距，按钮下沿离面板下沿 27px。
+ * 收起态垂直余量很大（面板内容区 796，收起态内容总共约 512），长高 30px 不挤任何东西。
+ * ----------------------------------------------------------------------------- */
+
+.app__body > .sb.sb--collapsed .sb__user {
+  height: auto;
+}
+
+/* 收起态的品牌行：logo 必须落在条带中心上，所以展开箭头从「logo 右边」改到「logo 下方」。
+ *
+ * 为什么「把间隙收到 --sp-1」这种行内排法救不了它：
+ *   收起态内容盒只有 62.67px（64 - 两侧各 1px 边框）。把 gap 从 10 收到 4 之后
+ *   一行是 32 + 4 + 24 = 60，确实放得下了 —— 但 justify-content:center（glass.css:965）
+ *   居中的是**这一行**（60 的中点在 logo 右沿附近），不是 logo。
+ *   实测：logo 中心 x = 28，条带内容盒中心是 42 —— 整整偏左 14px。
+ *   只要箭头还跟 logo 同一行，logo 就永远不可能在中心上（除非把箭头叠到 logo 上）。
+ *
+ * 为什么选「竖排到 logo 下方」，而不是另外两种允许的做法：
+ *   · 浮在 logo 上的 hover 圆钮：鼠标一移开就没了。收起态里品牌行这枚是唯一的展开入口
+ *     （`.sb__status` 整块在 glass.css:981 是 display:none；而且 SidebarShell.tsx:507 的
+ *     `{!isCollapsed ? … : …}` 让状态区那些行在收起态压根不渲染 —— 实测收起态里
+ *     `.sb__collapse` 只有一枚，就是品牌行这枚），把唯一的门做成「找得到才算存在」不合适；
+ *     而且它会盖住 logo 本身。
+ *   · 放到侧栏最底部：离它控制的对象（品牌区/整条侧栏）最远，还会和用户区那枚 24×24
+ *     「设置」按钮挨成一组，两枚同尺寸图标叠在一起更容易点错。
+ *   竖排的代价是品牌行从 52 长到 80（32 logo + 4 gap + 24 箭头 + 上下各 10 = 80，+28px）：
+ *   实测收起态垂直余量很大 —— 导航区整体被推下 28px，但导航项本身一个像素没变形
+ *   （44×40、图标 18×18 仍居中），也没被挤出滚动条（nav clientHeight 300 = scrollHeight 300），
+ *   底部用户区位置不变。
+ *
+ * padding-top 为什么是那半条算式而不是一个数字：展开态里 logo 在 52 高的行盒里居中，
+ *   它上方的余量就是这个 (52 - 32) / 2 = 10。竖排后行盒自己长高，得把这 10px 显式补回来，
+ *   logo 才会停在和展开态、和标题栏 logo 同一条水平线上（顶部「1 边框 + 8 内边距 + 10 = 19」
+ *   那条光学留白也是它，见上面 --sb-pad-bottom 的推导）。
+ *   padding-block 只覆盖上下，左右仍是 glass.css:966 的 0（竖排 + align-items:center 已经居中）。
+ * gap 收到 --sp-1(4)：竖排后 10px 会把 logo 和箭头拆成两组，而它们是同一个「品牌 + 开关」单元。
+ * flex-direction 只影响收起态：展开态（`.sb`，没有 sb--collapsed）还是 row，
+ *   「logo + 产品名 + 版本 + 箭头」一行，一个字都没动。 */
+.app__body > .sb.sb--collapsed .sb__brand {
+  flex-direction: column;
+  justify-content: center;
+  height: auto;
+  padding-block: calc((var(--sb-brand-h) - var(--brand-logo-box)) / 2);
+  gap: var(--sp-1);
+}
+
+/* --------------------------------------------------------------------------------
+ * 4) 延迟行里的「全链路」补充读数（SidebarShell.tsx 的 .sb__latency-total）
+ *
+ * hop 与全链路这两个数是同一行里的主次：hop 走 glass.css `.sb__latency` 的重音规格
+ * （--fs-num / 600 / --fg-0），全链路这里是「小一号、400、降两级灰、等宽数字」，
+ * 一眼就能分出「哪个是代理自身、哪个是整条路」。
+ * 为什么不并进 `.sb__latency` 内部：那是 inline-flex + align-items:baseline 的宝石，
+ * 塞进去会把 hop 的基线跟着拉走；而且它需要能被单独省略（见下面的 overflow）。
+ * 容器是 flex 行（`.sb__status-row--sub`，gap 4），所以这里只要 flex:0 1 auto + 省略号：
+ * 宽度不够时先截断它，绝不把右边的刷新按钮挤出卡片。
+ * 只在 totalMs - hopMs > 400ms 时才渲染（判定在 SidebarShell.tsx 的 totalText 里）。
+ * ----------------------------------------------------------------------------- */
+
+.app__body > .sb .sb__latency-total {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-caption);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  /* 降两级灰（--fg-0 → --fg-1 → --fg-2），和 `.sb__latency-unit` 的「 ms」同色阶。
+   * 不用 --fg-3：tokens.css 里它是「禁用文字」，而这段是有效信息，只是不是主角。 */
+  color: var(--fg-2);
+  /* 故意不给 cursor:pointer / hover：它是增量信息，不是可点的东西 */
+}
+
+/* --------------------------------------------------------------------------------
+ * 5) 延迟行：读数 + 侧栏里唯一的刷新入口
+ *    （SidebarShell.tsx 的 .sb__latency / .sb__latency-flag / .sb__refresh）
+ *
+ * 那枚写着「测」的小按钮已经删掉 —— 因此 glass.css:1186 的 `.sb__latency-test`
+ * 变成一条死规则（那个文件不归这把，只能在这里留一句，免得下一个人以为还有人在用）。
+ * 现在关于代理速度只剩右边那枚 ↻（`.sb__refresh`）：点一次 = 重读 DSH 状态 + 重测延迟，
+ * 两件事并行发，不是「先刷状态再排队测速」。
+ * ----------------------------------------------------------------------------- */
+
+/* 读数现在是一段纯文本，但 glass.css:753 给它留了 cursor:pointer（它当年是个 <button>）。
+ * 形状说了的谎要用形状收回：小手 + hover 变色却点不动，就是又一遍「点了没反应」。
+ * 只改 cursor 与 hover 颜色，不碰 color / 字号 —— 那是 hop 的重音规格，和这里无关。 */
+.app__body > .sb .sb__latency {
+  cursor: default;
+}
+
+.app__body > .sb .sb__latency:hover {
+  color: var(--fg-0);
+}
+
+/* 未测态本来就是 ember 色（glass.css:766），hover 别把它拉回白色 —— 那会被读成「已测出」。 */
+.app__body > .sb .sb__latency--untested:hover {
+  color: var(--p-ember);
+}
+
+/* 测速期间（真代理约 1~2 s）的状态标签，跟在老读数后面一起显示：「10 ms 测试中」。
+ * 小一号、降两级灰 —— 它是过渡态，不是第二个读数；动的东西是右边按钮里的 spinner。
+ * 不写 margin：父级是 inline-flex + gap 3px，间距它自己会长。 */
+.app__body > .sb .sb__latency-flag {
+  font-size: var(--fs-caption);
+  font-weight: 400;
+  color: var(--fg-2);
+}
+
+/* 测速时按钮是 disabled（防连点叠出多次测速），但光标不该读成「不许点」：
+ * 它正在干活，progress 和按钮里的 spinner 是同一句话。 */
+.app__body > .sb .sb__refresh:disabled {
+  cursor: progress;
+}
+
+/* ------------------------------------------------------------------ *
+ * 批量更新的勾选（多选更新）—— 纯追加，不动上面任何既有规则
+ * ------------------------------------------------------------------ */
+
+/* 表头「插件」那一格现在包着一个全选复选框：用 flex 让它和文字同一行居中，
+ * 但**不改** .plist__head / .prow 的 grid-template-columns ——
+ * 复选框是放在第一列内部的最前面，靠列的同一个左起点和行里的复选框对齐。 */
+.plist__head-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* 全选框本身不带文案（文案在它后面的「插件」两个字），所以把 .checkbox 的 gap 收掉，
+ * 否则框和文字之间会多出一段空白，表头会显得往右缩。 */
+.plist__pick-all {
+  gap: 0;
+}
+
+/* indeterminate（部分选中）没有原生外观可借：base.css 的勾是画在 :checked::after 上的，
+ * 中间态下 checked 是 false，不加这条就完全看不出「选了一部分」。 */
+.plist__pick-all input[type="checkbox"]:indeterminate {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.plist__pick-all input[type="checkbox"]:indeterminate::after {
+  content: "";
+  display: block;
+  width: 7px;
+  height: 2px;
+  margin: 5px auto 0;
+  background: var(--accent-fg);
+  border-radius: 1px;
+}
+
+/* 行内复选框：不参与 flex 伸展（否则窄窗口下它会被 .prow__name 挤变形），
+ * gap 收掉的理由同 .plist__pick-all。 */
+.prow__pick {
+  flex: 0 0 auto;
+  gap: 0;
+}
+
+/* 禁用的那格不许点，光标也要说实话；透明度交给 base.css 的 :disabled（已经不透明地标过了），
+ * 这里只补 cursor，避免小手光标点下去毫无反应。 */
+.prow__pick.is-off {
+  cursor: not-allowed;
+}

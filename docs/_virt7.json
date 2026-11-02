@@ -1,0 +1,143 @@
+{
+  "domBase": 380,
+  "skeletonMs": 24,
+  "firstCardMs": 204,
+  "interactiveMs": 707,
+  "cardsAfterOpen": 48,
+  "domAfterOpen": 745,
+  "domAfterOpenDelta": 365,
+  "status": "共 8281 条，筛出 8281 条\n·\n目录构建于 2026-11-01\n·\n来自 npm 包 dsh-plugin-catalog\n·\n用的是本地缓存 · 拉取于 30 分钟前",
+  "footer": "显示第 1–48 个 / 共 8281 个插件",
+  "cardH": 158,
+  "rowH": 170,
+  "gridH": 352058,
+  "iconImg": 3,
+  "iconMono": 45,
+  "top48": 48,
+  "top48WithIcon": 1,
+  "iconSampleUrl": "https://raw.githubusercontent.com/DayuanJiang/next-ai-draw-io/main/packages/dsh-plugin/icon.png",
+  "iconSampleResult": "load",
+  "iconImgAfterWait": 3,
+  "iconDecoded": 3,
+  "iconMonoAfterWait": 45,
+  "scrollerFound": true,
+  "scrollHeightStart": 352283,
+  "maxScrollTop": 351485,
+  "scrollLoopMs": 2693,
+  "steps": [
+    {
+      "i": 0,
+      "cards": 21,
+      "dom": 421,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100
+    },
+    {
+      "i": 1,
+      "cards": 21,
+      "dom": 421,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100
+    },
+    {
+      "i": 2,
+      "cards": 21,
+      "dom": 421,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100
+    },
+    {
+      "i": 3,
+      "cards": 21,
+      "dom": 421,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100
+    },
+    {
+      "i": 4,
+      "cards": 21,
+      "dom": 421,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100
+    },
+    {
+      "i": 5,
+      "cards": 21,
+      "dom": 421,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100
+    },
+    {
+      "i": 6,
+      "cards": 21,
+      "dom": 421,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100
+    },
+    {
+      "i": 7,
+      "cards": 21,
+      "dom": 421,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100
+    },
+    {
+      "i": 8,
+      "cards": 21,
+      "dom": 421,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100
+    },
+    {
+      "i": 9,
+      "cards": 21,
+      "dom": 421,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100
+    },
+    {
+      "i": 10,
+      "cards": 21,
+      "dom": 421,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100
+    },
+    {
+      "i": 11,
+      "cards": 21,
+      "dom": 421,
+      "visible": 17,
+      "scrollTop": 351485,
+      "pct": 100
+    }
+  ],
+  "domEnd": 421,
+  "domGrowth": -324,
+  "maxCards": 48,
+  "maxDom": 745,
+  "blankSteps": [],
+  "reachedEnd": true,
+  "cardsBackTop": 24,
+  "searchMs": 237,
+  "searchFooter": "显示第 1–48 个 / 共 9 个插件",
+  "searchCards": 9,
+  "searchClearMs": 231,
+  "categoryMs": 12,
+  "categoryLabel": "UI 增强（1628）",
+  "categoryFooter": "显示第 1–48 个 / 共 1628 个插件",
+  "categoryCards": 48,
+  "categoryDom": 745,
+  "domFinal": 745,
+  "cardsFinal": 48
+}

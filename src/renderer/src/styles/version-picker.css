@@ -1,0 +1,379 @@
+/* 版本选择面板样式。
+ *
+ * 约定：
+ *   - 类名统一 `vpick-` 前缀，不依赖 components.css / base.css 里的任何类；
+ *   - 颜色、间距、圆角、动效时长一律走 tokens.css 里已有的 CSS 变量；
+ *   - 不写全局 element 选择器（button / span 之类），只写 .vpick__* 自身的规则；
+ *   - 尊重 prefers-reduced-motion。
+ */
+
+.vpick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  color: var(--fg-0);
+  font-size: var(--fs-sm);
+}
+
+.vpick--compact {
+  gap: var(--space-1);
+}
+
+/* ---------- 搜索框 ---------- */
+
+.vpick__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.vpick__search {
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 30px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--fg-0);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  outline: none;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.vpick__search::placeholder {
+  color: var(--fg-3);
+}
+
+.vpick__search:hover {
+  border-color: var(--border-strong);
+}
+
+.vpick__search:focus,
+.vpick__search:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.vpick__meta {
+  flex: 0 0 auto;
+  color: var(--fg-3);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- 状态行 ---------- */
+
+.vpick__status {
+  min-height: 28px;
+  padding: var(--space-3) var(--space-2);
+  color: var(--fg-2);
+  font-size: var(--fs-xs);
+}
+
+.vpick__status--loading {
+  animation: vpick-breathe 1.4s var(--ease-in-out) infinite;
+}
+
+@keyframes vpick-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.vpick__status--error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--danger);
+}
+
+.vpick__error {
+  flex: 1 1 auto;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.vpick__retry {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  height: 24px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--danger-line);
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  transition: background-color var(--dur-instant) var(--ease-out), border-color var(--dur-instant) var(--ease-out);
+}
+
+.vpick__retry:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: var(--bg-hover);
+}
+
+.vpick__retry:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.vpick__retry:active:not(:disabled) {
+  background: var(--bg-active);
+}
+
+.vpick__retry:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- 列表 ---------- */
+
+.vpick__list {
+  box-sizing: border-box;
+  max-height: 280px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-1);
+  outline: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.vpick--compact .vpick__list {
+  max-height: 220px;
+}
+
+.vpick__list:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.vpick__list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.vpick__list::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-pill);
+}
+
+.vpick__list::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+.vpick__list::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+/* ---------- 分组 ---------- */
+
+.vpick__group + .vpick__group {
+  margin-top: var(--space-1);
+}
+
+/* 刻意不写 text-transform / letter-spacing：这里要的就是一行正常小字 */
+.vpick__group-title {
+  padding: var(--space-1) var(--space-2) 2px;
+  color: var(--fg-3);
+  font-size: var(--fs-xxs);
+  font-weight: 500;
+}
+
+/* ---------- 每一行 ---------- */
+
+.vpick__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  min-height: 26px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--dur-instant) var(--ease-out);
+}
+
+.vpick__row:hover {
+  background: var(--bg-hover);
+}
+
+/* 高亮项（鼠标 hover 或键盘选中，二者是同一份状态） */
+.vpick__row--active {
+  background: var(--bg-active);
+  box-shadow: inset 2px 0 0 0 var(--accent);
+}
+
+.vpick__row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* 「当前已装」这一行压暗，但仍然可点（可以重装） */
+.vpick__row--muted .vpick__label {
+  color: var(--fg-2);
+}
+
+/* 预留钩子：真给某行标 aria-disabled 时就有可见反馈 */
+.vpick__row[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.vpick__label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg-0);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vpick__spacer {
+  flex: 1 1 auto;
+  min-width: var(--space-2);
+}
+
+.vpick__date {
+  flex: 0 0 auto;
+  color: var(--fg-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xxs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 方向徽章 ---------- */
+
+.vpick__badge {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  height: 18px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xxs);
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.vpick__badge--up {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* 降级用 warn 色调：用户得意识到自己在往回退 */
+.vpick__badge--down {
+  border-color: var(--warn-line);
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.vpick__badge--same {
+  border-color: var(--border-soft);
+  background: var(--bg-2);
+  color: var(--fg-2);
+}
+
+/* ---------- 截断提示 / 警告 ---------- */
+
+.vpick__truncated {
+  margin-top: var(--space-1);
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  border-top: 1px solid var(--border-soft);
+  color: var(--fg-3);
+  font-size: var(--fs-xxs);
+}
+
+.vpick__warn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--warn);
+  font-size: var(--fs-xxs);
+}
+
+.vpick__warn-line {
+  word-break: break-word;
+}
+
+/* ---------- 底部「将执行」预览 ---------- */
+
+.vpick__preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  min-width: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+}
+
+.vpick__preview-label {
+  flex: 0 0 auto;
+  color: var(--fg-3);
+  font-size: var(--fs-xxs);
+}
+
+.vpick__preview-cmd {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vpick__preview-empty {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fg-3);
+  font-size: var(--fs-xxs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vpick__hint {
+  flex: 0 0 auto;
+  color: var(--fg-3);
+  font-size: var(--fs-xxs);
+  white-space: nowrap;
+}
+
+/* ---------- 动效偏好 ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .vpick__status--loading {
+    animation: none;
+    opacity: 0.8;
+  }
+
+  .vpick__search,
+  .vpick__row,
+  .vpick__retry {
+    transition: none;
+  }
+}

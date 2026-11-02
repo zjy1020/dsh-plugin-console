@@ -1,0 +1,518 @@
+/**
+ * 插件市场（MarketTab）样式。
+ *
+ * 只在这里定义 .mkt* 类，颜色/间距/时长全部走 tokens.css 的变量；
+ * 不写任何 element 选择器，避免影响别的面板。
+ * 宫格可能有 8000+ 张卡（一次只挂 48 张），所以卡片样式保持"扁平 + 无阴影 + 不做位移动画"，
+ * 滚动才不掉帧。
+ */
+
+/* 市场比别的 tab 宽：一屏要放得下 5 列卡片 */
+.install__pane.mkt {
+  max-width: 1180px;
+  /* 每张卡的最小高度；网格自动拉伸时同一行的卡会等高 */
+  --mkt-card-h: 158px;
+}
+
+/* ---------------------------------------------------------------- 顶部工具条 */
+
+.mkt__bar {
+  position: sticky;
+  top: calc(-1 * var(--space-4));
+  z-index: var(--z-sticky);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: calc(-1 * var(--space-4));
+  padding: var(--space-4) 0 var(--space-3);
+  background: var(--bg-0);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.mkt__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 260px;
+  min-width: 180px;
+}
+
+.mkt__search-icon {
+  position: absolute;
+  left: 10px;
+  font-size: var(--fs-md);
+  color: var(--fg-3);
+  pointer-events: none;
+}
+
+.input.mkt__input {
+  width: 100%;
+  padding-left: 30px;
+  padding-right: 30px;
+}
+
+.input.mkt__input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.mkt__clear {
+  position: absolute;
+  right: 2px;
+  padding: 0 6px;
+  font-size: var(--fs-xs);
+  color: var(--fg-2);
+}
+
+.mkt__select {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.mkt__select-label {
+  font-size: var(--fs-xs);
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+
+.mkt__sorts {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+}
+
+.mkt__refresh {
+  margin-left: auto;
+}
+
+/* ---------------------------------------------------------------- 说明行 */
+
+.mkt__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--fg-2);
+}
+
+.mkt__dot {
+  color: var(--fg-3);
+}
+
+.mkt__cached {
+  color: var(--fg-1);
+  padding: 1px 6px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-sm);
+}
+
+.mkt__loading-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--fg-1);
+}
+
+/* ---------------------------------------------------------------- 宫格 */
+
+/*
+  虚拟滚动的两层结构：
+  .mkt__vwrap 固定高度（= 真实条目数 × 行高）撑开滚动条，它就是「整个列表有多长」；
+  .mkt__grid--win 绝对定位在里面，只装视口上下各一屏的卡，用 translateY 摆到该在的位置。
+*/
+.mkt__vwrap {
+  position: relative;
+}
+
+.mkt__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mkt__grid--win {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  will-change: transform;
+}
+
+/* 固定高度（不是 min-height）：行高可预测，滚动时窗口位置才算得准 */
+.mkt__card {
+  position: relative;
+  height: var(--mkt-card-h);
+  background: var(--bg-1);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+
+.mkt__card:hover {
+  background: var(--bg-hover);
+  border-color: var(--border);
+}
+
+/* 整张卡都是「打开详情」的命中区；绝对定位铺满，卡片高度由 .mkt__card 定，同一行必然等高 */
+.mkt__card-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3);
+  overflow: hidden;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.mkt__card-face:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.mkt__card-face--skeleton {
+  cursor: default;
+}
+
+.mkt__card-top {
+  display: flex;
+  align-items: center;
+  height: 34px;
+}
+
+.mkt__icon {
+  flex: 0 0 auto;
+}
+
+.mkt__icon--img {
+  object-fit: contain;
+  background: var(--bg-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+
+.mkt__icon--mono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-sm);
+}
+
+.mkt__card-name {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--fg-0);
+}
+
+.mkt__card-desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--fg-1);
+  overflow-wrap: anywhere;
+}
+
+.mkt__card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin-top: auto;
+  font-size: var(--fs-xxs);
+  color: var(--fg-2);
+}
+
+.mkt__card-cat {
+  max-width: 11ch;
+  padding: 1px 6px;
+  color: var(--fg-1);
+  background: var(--bg-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-pill);
+}
+
+/* 安装按钮浮在卡片右上角（在脸层之上，所以点它不会触发打开详情） */
+.mkt__card-act {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+}
+
+.mkt__card-flag {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  z-index: 2;
+}
+
+/* ---------------------------------------------------------------- 能力标签 */
+
+.mkt__caps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.mkt__caps--detail {
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--border-soft);
+}
+
+.mkt__cap {
+  padding: 1px 6px;
+  font-size: var(--fs-xxs);
+  color: var(--warn);
+  background: var(--warn-soft);
+  border: 1px solid var(--warn-line);
+  border-radius: var(--radius-sm);
+}
+
+.mkt__cap-note {
+  font-size: var(--fs-xxs);
+  color: var(--fg-3);
+}
+
+/* ---------------------------------------------------------------- 底部窗口位置说明 */
+
+.mkt__more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0 var(--space-4);
+}
+
+.mkt__more-count,
+.mkt__more-done {
+  font-size: var(--fs-xs);
+  color: var(--fg-2);
+}
+
+/* ---------------------------------------------------------------- 详情覆盖层 */
+
+.mkt__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-drawer);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+  overflow-y: auto;
+  background: var(--scrim);
+}
+
+.mkt__sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 720px;
+  margin: auto;
+  padding: var(--space-5);
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  animation: mkt-rise var(--dur-base) var(--ease-out);
+}
+
+.mkt__sheet:focus-visible {
+  outline: none;
+}
+
+@keyframes mkt-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.mkt__sheet-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.mkt__sheet-titlewrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.mkt__sheet-title {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-lg);
+  color: var(--fg-0);
+  overflow-wrap: anywhere;
+}
+
+.mkt__sheet-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--fg-2);
+}
+
+.mkt__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.mkt__sheet-close {
+  flex: 0 0 auto;
+}
+
+.mkt__sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.mkt__sheet-note {
+  font-size: var(--fs-xs);
+  color: var(--fg-2);
+}
+
+.mkt__picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.mkt__picker-note {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--fg-2);
+  line-height: 1.6;
+}
+
+.mkt__sheet-desc {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.65;
+  color: var(--fg-1);
+  overflow-wrap: anywhere;
+}
+
+.mkt__sheet-desc-alt {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+  color: var(--fg-3);
+  overflow-wrap: anywhere;
+}
+
+/* 图片区：装的是 PluginGallery（README 截图），这里只负责给它一块底 */
+.mkt__slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+}
+
+.mkt__slot-title {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--fg-1);
+}
+
+.mkt__kv {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.mkt__link {
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--accent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.mkt__link:hover {
+  color: var(--accent-hi);
+  text-decoration: underline;
+}
+
+.mkt__link:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: var(--radius-xs);
+}
+
+/* ---------------------------------------------------------------- 无障碍 */
+
+@media (prefers-reduced-motion: reduce) {
+  .mkt__card,
+  .mkt__cap,
+  .mkt__cached {
+    transition: none;
+  }
+
+  .mkt__sheet {
+    animation: none;
+  }
+}

@@ -1,0 +1,494 @@
+/* ------------------------------------------------------------------ *
+ * 设置中心 · 外观分区（AppearanceSettings.tsx）
+ *
+ * 这一页承载设计纲领 §9 的五块：模式与材质 / 壁纸 / 侧边栏 / 动效 / 主题。
+ * 它自己的容器一律不画玻璃 —— 设置面板本身已经是玻璃面板，再套一层透明
+ * 会变成「玻璃里的玻璃」，文字开始打架（纲领 §4「不建议全部用玻璃卡片」）。
+ * 所以这里的控件只用**衬底**（--gl-bed-*）和细边，不用 backdrop-filter。
+ * ------------------------------------------------------------------ */
+
+.apsec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.apsec .settings__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2h);
+  padding: var(--sp-3);
+  border: 1px solid var(--gl-panel-edge);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--gl-bed-color) 55%, transparent);
+}
+
+/* ---------------- 带标签的一行控件 ---------------- */
+
+.aprow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 30px;
+}
+
+.aprow--wall {
+  align-items: flex-start;
+}
+
+.aprow__label {
+  flex: 0 0 108px;
+  font-size: var(--fs-sm);
+  color: var(--fg-1);
+}
+
+.aprow__side {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.aprow__side .input {
+  flex: 1 1 180px;
+  min-width: 140px;
+}
+
+/* ---------------- 分段控件 ---------------- */
+
+.apseg {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--gl-panel-edge);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--gl-bed-color) 70%, transparent);
+  flex-wrap: wrap;
+}
+
+.apseg__opt {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--fg-2);
+  font: inherit;
+  font-size: var(--fs-sm);
+  padding: 4px 10px;
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  transition: color var(--t-2) var(--e-standard), background var(--t-2) var(--e-standard);
+}
+
+.apseg__opt:hover {
+  color: var(--fg-0);
+  background: color-mix(in srgb, var(--p-mist) 6%, transparent);
+}
+
+.apseg__opt.is-on {
+  color: var(--fg-0);
+  background: color-mix(in srgb, var(--p-brand) 16%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--p-mist) 14%, transparent);
+}
+
+.apseg__opt:focus-visible {
+  outline: 2px solid var(--p-brand);
+  outline-offset: 1px;
+}
+
+/* ---------------- 滑杆 ---------------- */
+
+.aprng {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 26px;
+}
+
+.aprng__label {
+  flex: 0 0 108px;
+  font-size: var(--fs-sm);
+  color: var(--fg-1);
+}
+
+.aprng__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  appearance: none;
+  height: 3px;
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--fg-1) 22%, transparent);
+  cursor: pointer;
+}
+
+.aprng__input::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--r-full);
+  border: 1px solid color-mix(in srgb, var(--p-mist) 30%, transparent);
+  background: var(--p-brand);
+  cursor: grab;
+}
+
+.aprng__input:focus-visible {
+  outline: 2px solid var(--p-brand);
+  outline-offset: 3px;
+}
+
+.aprng__val {
+  flex: 0 0 52px;
+  text-align: right;
+  font-family: var(--font-num);
+  font-size: var(--fs-meta2);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-2);
+}
+
+/* ---------------- 开关行 ---------------- */
+
+.apsw {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 34px;
+  cursor: pointer;
+}
+
+.apsw.is-disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.apsw__text {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.apsw__label {
+  font-size: var(--fs-sm);
+  color: var(--fg-0);
+}
+
+.apsw__hint {
+  font-size: var(--fs-caption);
+  color: var(--fg-2);
+  line-height: 1.45;
+}
+
+/* ---------------- 壁纸 ---------------- */
+
+.apwall__now {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.apwall__thumb {
+  flex: 0 0 auto;
+  width: 96px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--gl-panel-edge);
+  background: var(--gl-bed-color);
+}
+
+.apwall__thumb--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-caption);
+  color: var(--fg-3);
+}
+
+.apwall__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.apwall__name {
+  font-size: var(--fs-sm);
+  color: var(--fg-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.apwall__sub {
+  font-size: var(--fs-caption);
+  color: var(--fg-2);
+  line-height: 1.45;
+}
+
+.apwall__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: var(--sp-2);
+}
+
+.apwall__cell {
+  appearance: none;
+  padding: 0;
+  border: 1px solid var(--gl-panel-edge);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--gl-bed-color) 60%, transparent);
+  color: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: border-color var(--t-2) var(--e-standard);
+}
+
+.apwall__cell img {
+  display: block;
+  width: 100%;
+  height: 58px;
+  object-fit: cover;
+}
+
+.apwall__cell:hover {
+  border-color: color-mix(in srgb, var(--p-brand) 40%, transparent);
+}
+
+.apwall__cell.is-on {
+  border-color: var(--p-brand);
+}
+
+.apwall__cell:focus-visible {
+  outline: 2px solid var(--p-brand);
+  outline-offset: 1px;
+}
+
+.apwall__cellname {
+  font-size: var(--fs-caption);
+  color: var(--fg-2);
+  padding: 3px 6px 4px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.apwall__miss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 58px;
+  font-size: var(--fs-caption);
+  color: var(--danger);
+}
+
+/* ---------------- 自动适配结果 ---------------- */
+
+.apfit {
+  border: 1px solid color-mix(in srgb, var(--p-brand) 28%, transparent);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--p-brand) 8%, transparent);
+  padding: var(--sp-2) var(--sp-3);
+}
+
+.apfit__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--fg-0);
+  margin-bottom: var(--sp-2);
+}
+
+.apfit__mode {
+  font-size: var(--fs-caption);
+  color: var(--fg-1);
+  border: 1px solid var(--gl-panel-edge);
+  border-radius: var(--r-xs);
+  padding: 0 5px;
+}
+
+.apfit__reasons {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--fs-caption);
+  color: var(--fg-1);
+  line-height: 1.5;
+}
+
+.apnote {
+  font-size: var(--fs-caption);
+  color: var(--fg-1);
+  border-left: 2px solid var(--p-brand);
+  padding-left: var(--sp-2);
+  line-height: 1.5;
+}
+
+/* ---------------- 主题卡 ---------------- */
+
+.aptheme__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--sp-2);
+}
+
+.aptheme__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  border: 1px solid var(--gl-panel-edge);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--gl-bed-color) 60%, transparent);
+}
+
+.aptheme__card.is-on {
+  border-color: var(--p-brand);
+  background: color-mix(in srgb, var(--p-brand) 10%, transparent);
+}
+
+.aptheme__swatch {
+  display: flex;
+  height: 26px;
+  border-radius: var(--r-xs);
+  overflow: hidden;
+  border: 1px solid var(--gl-panel-edge);
+}
+
+.aptheme__swatch span {
+  flex: 1 1 auto;
+}
+
+.aptheme__name {
+  font-size: var(--fs-sm);
+  color: var(--fg-0);
+}
+
+.aptheme__desc {
+  font-size: var(--fs-caption);
+  color: var(--fg-2);
+  line-height: 1.45;
+  min-height: 2.4em;
+}
+
+.aptheme__acts {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+/* ---------------- 分区头（标题 + 还原外观） ---------------- */
+
+/* 标题行原本只有一个 .section-title，还原按钮要挂在它右侧，所以包一层 flex。
+   允许换行：设置面板最窄时标题 + 「确认还原/取消」两个按钮会挤不下一行。 */
+.apsec__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  min-height: 26px;
+}
+
+/* 标题自己带着 padding: var(--space-2) 0，头行里不能再叠一份，否则和右侧按钮对不齐 */
+.apsec__head .section-title {
+  margin: 0;
+  padding: 0;
+}
+
+.apreset {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+/* 上膛后的说明。用危险色，但只占一小块文字：这是提醒，不是报错 */
+.apreset__ask {
+  font-size: var(--fs-caption);
+  color: var(--danger);
+  line-height: 1.35;
+}
+
+/* 未上膛时的「还原外观」：次级按钮 + 危险色文字。
+   不给实心危险底 —— 实心红的视觉重量会盖过真正的「保存」，而这里只是低频操作。 */
+.apreset__btn {
+  color: color-mix(in srgb, var(--danger) 70%, var(--fg-2));
+  border-color: color-mix(in srgb, var(--danger) 26%, var(--gl-panel-edge));
+}
+
+.apreset__btn:hover:not(:disabled) {
+  color: var(--danger-hi);
+  border-color: var(--danger-line);
+  background: var(--danger-soft);
+}
+
+/* 还原成功的说明用 ok 色，与常驻的「改完即生效」提示区分开 */
+.apnote--ok {
+  border-left-color: var(--ok);
+  color: var(--fg-1);
+}
+
+/* ---------------- 取色行（强调色 / 氛围色） ---------------- */
+
+.apcolor {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 28px;
+}
+
+/* 把原生取色控件压成一个圆角色块。它在各平台默认长得不一样（Windows 上带一圈
+   内阴影和固定内边距），不统一掉的话两个色块高度都会不一致。 */
+.apcolor__input {
+  appearance: none;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--gl-panel-edge);
+  border-radius: var(--r-xs);
+  background: transparent;
+  cursor: pointer;
+}
+
+/* WebKit 的色块是两层：外层 wrapper 带一圈白边，不压成 0 浅色主题下会露白 */
+.apcolor__input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.apcolor__input::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--r-xs) - 1px);
+}
+
+/* 十六进制值 / 「跟随主题」用等宽字：换颜色时整行不会跟着左右跳 */
+.apcolor__val {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  color: var(--fg-2);
+  min-width: 10ch;
+}
+
+.apcolor__input:focus-visible {
+  outline: 2px solid var(--p-brand);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apseg__opt,
+  .apwall__cell {
+    transition: none;
+  }
+}

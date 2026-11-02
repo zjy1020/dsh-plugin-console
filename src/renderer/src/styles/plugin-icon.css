@@ -1,0 +1,62 @@
+/* =============================================================================
+ * plugin-icon.css —— PluginIcon 专用样式。
+ *
+ * 规矩：
+ *  - 类名统一 picon- 前缀，避免和其它组件的 CSS 撞车；
+ *  - 不写 element 选择器（如 span），只写类；
+ *  - 颜色只引用 tokens.css 的变量（带深色兜底值，变量缺失也不至于变成透明）。
+ * ========================================================================== */
+
+.picon-img {
+  display: block;
+  flex: 0 0 auto;
+  object-fit: contain;
+  background: var(--bg-3, #1b2130);
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.picon-ph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  background: var(--bg-3, #1b2130);
+  color: var(--fg-2, #6d7788);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  user-select: none;
+  overflow: hidden;
+  border: 1px solid var(--border-soft, #1a1f28);
+}
+
+/* 加载中：比 monogram 再暗一点，轻微呼吸 */
+.picon-ph--loading {
+  background: var(--bg-2, #161a23);
+  border-color: var(--border, #232935);
+  color: transparent;
+  animation: picon-breathe 1.4s var(--ease-in-out, ease-in-out) infinite;
+}
+
+@keyframes picon-breathe {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.82;
+  }
+}
+
+/* 无障碍：降低动效时彻底关掉呼吸 */
+@media (prefers-reduced-motion: reduce) {
+  .picon-ph--loading {
+    animation: none;
+    opacity: 0.55;
+  }
+}

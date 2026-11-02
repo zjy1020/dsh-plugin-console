@@ -1,0 +1,30 @@
+{
+  "name": "dsh-plugin-console",
+  "productName": "DSH 插件台",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DSH 插件台 — 查看已装插件、检查更新、卸载、从 GitHub / npm 自定义安装",
+  "author": "YG",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "dist": "electron-vite build && electron-builder --win --x64 --config electron-builder.yml",
+    "dist:dir": "electron-vite build && electron-builder --win --x64 --dir --config electron-builder.yml"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0",
+    "electron-vite": "^6.0.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.5"
+  }
+}

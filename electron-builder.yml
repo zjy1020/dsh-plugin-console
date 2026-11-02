@@ -1,0 +1,69 @@
+appId: com.yg.dsh-plugin-console
+productName: DSH 插件台
+copyright: Copyright © 2026 YG
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**/*
+  - package.json
+  - '!**/*.map'
+  - '!**/{.eslintrc,.editorconfig,.gitignore,README.md,docs,scripts}'
+
+asar: true
+
+# 托盘 / 窗口图标要在打包后按绝对路径读到，所以放到 asar 外面
+# resources/pnpm 同理：pnpm 要 spawn 子进程去写 node_modules，asar 是只读虚拟文件系统，
+# 从里面跑起来的进程拿不到真实路径。这一份是「补全前置」的底 —— 有了它，
+# 插件台在任何一台机器上都能装插件，不要求用户先装 DSH 桌面端。
+extraResources:
+  - from: resources
+    to: resources
+    filter:
+      - "**/*"
+compression: maximum
+npmRebuild: false
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+  executableName: DSHPluginConsole
+  artifactName: DSH-Plugin-Console-${version}-setup.${ext}
+
+nsis:
+  # 安装向导定制脚本。为什么必须要有它：官方 nsis 配置项里**没有**任何
+  # 「在用户选的目录下再建一层子目录」的开关（已 grep app-builder-lib/scheme.json
+  # 确认不存在 installDirectory 之类的选项），自带的「补一层子目录」逻辑写死在
+  # templates/nsis/assistedInstaller.nsh:33-38，且追加的是 ASCII 的 APP_FILENAME，
+  # 只能在 NSIS 脚本层接管。
+  # build/installer.nsh 做的事：把「选择安装位置」页里用户选的目录当【父目录】，
+  # 自动在其下创建「DSH 插件台」子目录并把它作为真正的 $INSTDIR
+  # （幂等 / 处理尾斜杠与磁盘根 / 覆盖安装不重复嵌套），同时在页面上用中文
+  # 把「会自动建一层子目录」这件事明确告诉用户。
+  # 为什么值写成 build/installer.nsh：electron-builder 的 getResource
+  # （app-builder-lib/out/platformPackager.js:585-612）会先用 buildResources 目录
+  # （下面 directories.buildResources: build）去解析，解析不到再按项目根目录解析，
+  # 因此这种写法会命中项目里的 build/installer.nsh。
+  # 注意：该文件必须存成 UTF-8 with BOM，否则 makensis 报 "Bad text encoding"
+  # （!include 没有 /CHARSET 参数，命令行 -INPUTCHARSET 不作用于被包含文件）。
+  include: build/installer.nsh
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: DSH 插件台
+  uninstallDisplayName: DSH 插件台 ${version}
+  deleteAppDataOnUninstall: false
+  installerLanguages:
+    - zh_CN
+    - en_US
+  language: '2052'
+  runAfterFinish: true
+  warningsAsErrors: false

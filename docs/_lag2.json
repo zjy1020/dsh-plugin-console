@@ -1,0 +1,24 @@
+{
+  "scrollerClass": "install",
+  "scrollTop": 0,
+  "assignAt": 15731,
+  "scrollEvents": 1,
+  "timerDelayMs": 0,
+  "transformChangeMs": 62,
+  "footerChangeMs": 62,
+  "transformBefore": "matrix(1, 0, 0, 1, 0, 0)",
+  "transformAfter": "matrix(1, 0, 0, 1, 0, 59500)",
+  "footerBefore": "显示第 1–48 个 / 共 8281 个插件",
+  "footerAfter": "显示第 1401–1436 个 / 共 8281 个插件",
+  "cards": 36,
+  "firstCard": "DeepSeek-Harness-Pet",
+  "timeline": [
+    {
+      "t": 62,
+      "tf": "matrix(1, 0, 0, 1, 0, 59500)",
+      "footer": "显示第 1401–1436 个 / 共 8281 个插件"
+    }
+  ],
+  "longTasks": [],
+  "longTaskTotal": 0
+}

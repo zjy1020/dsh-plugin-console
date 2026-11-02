@@ -1,0 +1,11 @@
+const fs = require('fs')
+const p = process.env.APPDATA + '\\DSH 插件台\\catalog.json'
+const cat = JSON.parse(fs.readFileSync(p, 'utf8'))
+const withIcon = cat.plugins.filter((x) => x.icon)
+console.log('总数', cat.plugins.length, '带 icon 字段', withIcon.length)
+console.log('icon 样例:')
+for (const x of withIcon.slice(0, 5)) console.log('  ', x.name, '=>', JSON.stringify(x.icon))
+const shapes = new Set(withIcon.slice(0, 400).map((x) => (/^https?:\/\//i.test(x.icon) ? 'http-url' : /^data:/i.test(x.icon) ? 'data-url' : 'other:' + String(x.icon).slice(0, 24))))
+console.log('icon 形态:', [...shapes].slice(0, 8))
+const one = cat.plugins.find((x) => x.name === 'dsh-market')
+console.log('dsh-market 条目:', JSON.stringify(one, null, 1).slice(0, 900))

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      CSP：脚本/连接/字体一律只允许本地，样式允许 inline（Vite 注入 + 少量行内变量）。
+
+      img-src 额外放开 `https:`：插件市场和插件详情要显示**插件作者自己托管在
+      GitHub 上的图标/截图**，这些图必然是远程地址。以前只写 `'self' data:`，
+      结果是所有远程图被静默拦掉 —— 卡片全变成首字母占位，看起来像「市场没有图标」。
+      放开 https: 只影响 <img>：图片不能执行脚本，SVG 走 <img> 也是隔离子集
+      （拿不到同源上下文），配 referrerPolicy="no-referrer" 不会把本机信息带出去。
+
+      img-src 里的 `dshwp:` 是本地壁纸协议（主进程 wallpaperProtocol.ts 注册）：
+      壁纸原图可能有几十兆，走 IPC 转 data URL 会撑爆内存，所以用自定义协议按需流式读。
+      该协议只允许读壁纸目录内的文件，越界一律 404。
+
+      注意：`pnpm dev` 下 @vitejs/plugin-react 会往 HTML 里插一段 inline 的
+      react-refresh preamble，会被 default-src 'self' 拦掉。若 dev 白屏并在
+      console 看到 CSP/EvalError，把 script-src 放开即可（生产构建不需要）：
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: dshwp:;"
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: dshwp:;"
+    />
+    <title>DSH 插件台</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

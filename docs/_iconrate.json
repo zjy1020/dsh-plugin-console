@@ -1,0 +1,134 @@
+{
+  "steps": [
+    {
+      "ms": 1,
+      "cards": 0,
+      "imgTags": 0,
+      "decoded": 0,
+      "mono": 0,
+      "empty": 0
+    },
+    {
+      "ms": 1000,
+      "cards": 48,
+      "imgTags": 6,
+      "decoded": 6,
+      "mono": 42,
+      "empty": 0
+    },
+    {
+      "ms": 1998,
+      "cards": 48,
+      "imgTags": 9,
+      "decoded": 9,
+      "mono": 39,
+      "empty": 0
+    },
+    {
+      "ms": 2996,
+      "cards": 48,
+      "imgTags": 9,
+      "decoded": 9,
+      "mono": 39,
+      "empty": 0
+    },
+    {
+      "ms": 4007,
+      "cards": 48,
+      "imgTags": 9,
+      "decoded": 9,
+      "mono": 39,
+      "empty": 0
+    },
+    {
+      "ms": 5008,
+      "cards": 48,
+      "imgTags": 9,
+      "decoded": 9,
+      "mono": 39,
+      "empty": 0
+    },
+    {
+      "ms": 6006,
+      "cards": 48,
+      "imgTags": 9,
+      "decoded": 9,
+      "mono": 39,
+      "empty": 0
+    },
+    {
+      "ms": 7004,
+      "cards": 48,
+      "imgTags": 9,
+      "decoded": 9,
+      "mono": 39,
+      "empty": 0
+    }
+  ],
+  "final": {
+    "cards": 48,
+    "imgTags": 9,
+    "decoded": 9,
+    "mono": 39,
+    "empty": 0
+  },
+  "cardH": 158,
+  "withImage": [
+    {
+      "card": "OpenViking#examples/dsh-memory-plugin",
+      "size": "150x150",
+      "from": "gh:volcengine/OpenViking/HEAD/examples/dsh-memory-plugin/icon.svg"
+    },
+    {
+      "card": "next-ai-draw-io#dsh-plugin",
+      "size": "192x192",
+      "from": "gh:DayuanJiang/next-ai-draw-io/main/packages/dsh-plugin/icon.png"
+    },
+    {
+      "card": "dsh-web#packages/dsh-task-board",
+      "size": "150x150",
+      "from": "gh:zhu1090093659/dsh-web/HEAD/packages/dsh-task-board/icon.svg"
+    },
+    {
+      "card": "dsh-web#packages/dsh-web-all",
+      "size": "150x150",
+      "from": "gh:zhu1090093659/dsh-web/HEAD/packages/dsh-web-all/icon.svg"
+    },
+    {
+      "card": "dsh-web#packages/dsh-skill-explorer",
+      "size": "150x150",
+      "from": "gh:zhu1090093659/dsh-web/HEAD/packages/dsh-skill-explorer/icon.svg"
+    },
+    {
+      "card": "dsh-web#packages/dsh-git-graph",
+      "size": "150x150",
+      "from": "gh:zhu1090093659/dsh-web/HEAD/packages/dsh-git-graph/icon.svg"
+    },
+    {
+      "card": "dsh-web#packages/dsh-remote-web-ui",
+      "size": "150x150",
+      "from": "gh:zhu1090093659/dsh-web/HEAD/packages/dsh-remote-web-ui/icon.svg"
+    },
+    {
+      "card": "dsh-web#packages/dsh-plugin-manager",
+      "size": "150x150",
+      "from": "gh:zhu1090093659/dsh-web/HEAD/packages/dsh-plugin-manager/icon.svg"
+    },
+    {
+      "card": "dsh-web#packages/dsh-ssh",
+      "size": "150x150",
+      "from": "gh:zhu1090093659/dsh-web/HEAD/packages/dsh-ssh/icon.svg"
+    }
+  ],
+  "monoSample": [
+    "archify#integrations/deepseek-harness",
+    "hindsight#coding-agents",
+    "dsh-our-free-model",
+    "WeKnora#dsh-weknora",
+    "MemOS#memos-local-plugin",
+    "BrowserSkill#dsh-plugin-browserskill",
+    "dsh-market",
+    "dsh-routing-suite"
+  ],
+  "status": "共 8281 条，筛出 8281 条\n·\n目录构建于 2026-11-01\n·\n来自 npm 包 dsh-plugin-catalog\n·\n用的是本地缓存 · 拉取于 38 分钟前"
+}

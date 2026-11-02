@@ -1,0 +1,39 @@
+{
+  "csp": [
+    {
+      "equiv": "Content-Security-Policy",
+      "content": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+    }
+  ],
+  "remoteImgTest": {
+    "url": "https://raw.githubusercontent.com/Anmulzhao/DSH-AGINT/main/docs/assets/brand/png/agint-icon-256.png",
+    "result": "加载失败（onerror）"
+  },
+  "iconCard": {
+    "found": true,
+    "hasImg": false,
+    "hasMono": true,
+    "monoText": "A",
+    "hole": false,
+    "cardSize": {
+      "w": 246,
+      "h": 158
+    }
+  },
+  "localIconPath": {
+    "cards": 48,
+    "localPicon": 8,
+    "mono": 40,
+    "holes": 0
+  },
+  "escFocus": {
+    "focusedBefore": true,
+    "clickedCard": "dsh-our-free-model",
+    "sheetGone": true,
+    "activeTag": "BODY",
+    "activeClass": "",
+    "isSameCardFace": false,
+    "activeCardName": "archify#integrations/deepseek-harness"
+  },
+  "overlayClickCloses": true
+}

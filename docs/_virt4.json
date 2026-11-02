@@ -1,0 +1,60 @@
+{
+  "domBase": 380,
+  "skeletonMs": 991,
+  "firstCardMs": 991,
+  "interactiveMs": 1996,
+  "cardsAfterOpen": 48,
+  "domAfterOpen": 745,
+  "domAfterOpenDelta": 365,
+  "status": "共 8281 条，筛出 8281 条\n·\n目录构建于 2026-11-01\n·\n来自 npm 包 dsh-plugin-catalog\n·\n用的是本地缓存 · 拉取于 19 分钟前",
+  "footer": "显示第 1–48 个 / 共 8281 个插件",
+  "cardH": 158,
+  "rowH": 170,
+  "gridH": 352058,
+  "iconImg": 1,
+  "iconMono": 47,
+  "top48": 48,
+  "top48WithIcon": 1,
+  "iconSampleUrl": "https://raw.githubusercontent.com/DayuanJiang/next-ai-draw-io/main/packages/dsh-plugin/icon.png",
+  "iconSampleResult": "load",
+  "iconImgAfterWait": 1,
+  "iconDecoded": 0,
+  "iconMonoAfterWait": 47,
+  "scrollerFound": true,
+  "scrollHeightStart": 352283,
+  "maxScrollTop": 351485,
+  "scrollLoopMs": 12000,
+  "steps": [
+    {
+      "i": 0,
+      "cards": 48,
+      "dom": 745,
+      "visible": 0,
+      "scrollTop": 351485,
+      "pct": 100
+    },
+    {
+      "i": 1,
+      "cards": 48,
+      "dom": 745,
+      "visible": 0,
+      "scrollTop": 351485,
+      "pct": 100
+    },
+    {
+      "i": 2,
+      "cards": 48,
+      "dom": 745,
+      "visible": 0,
+      "scrollTop": 351485,
+      "pct": 100
+    },
+    {
+      "i": 3,
+      "cards": 48,
+      "dom": 745,
+      "visible": 0,
+      "scrollTop": 351485,
+      "pct": 100
+    },
+    {

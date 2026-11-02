@@ -1,0 +1,182 @@
+/**
+ * titlebar.css —— 自绘标题栏里由 TitleBar.tsx 自己引入的样式（logo 与三个窗口按钮）。
+ *
+ * 标题栏主体规则（.titlebar / .titlebar__brand / 拖拽区 / 按钮盒几何）仍在
+ * styles/components.css 里，本文件不改它们的位置与尺寸，只负责：
+ *   ① logo 图片本身；
+ *   ② 三个窗口按钮的**可见性**：图标描边、颜色、对比度、按下反馈。
+ *
+ * ⚠️ 加载顺序（改这个文件前必须先知道）：
+ *   main.tsx 是 `import { App } from './App'`（第 9 行）在 `import './styles/*.css'`
+ *   （第 11–14 行）**之前**，所以 TitleBar.tsx → titlebar.css 在产物里排在
+ *   components.css / glass.css **之前**（可在 out/renderer/assets/index-*.css 里核实）。
+ *   同特异性（0,1,0）时后加载的赢 —— 也就是 components.css 赢本文件。
+ *   想覆盖 components.css 的 `.titlebar__btn`，这里一律加一层 `.titlebar` 前缀（0,2,0），
+ *   hover 规则再带上 `:hover:not(:disabled)`（0,4,0，压过 components.css 的 0,3,0）。
+ */
+
+/* ============================== 品牌 logo ============================== */
+
+.titlebar__logo-img {
+  display: block;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  border-radius: var(--radius-sm, 4px);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  opacity: 0.95;
+  transition: opacity 140ms ease;
+}
+
+/* 窗口失焦时压暗一点，跟标题栏其它元素一起「退到后面」 */
+.titlebar[data-focused='false'] .titlebar__logo-img {
+  opacity: 0.55;
+}
+
+/* =========================== 三个窗口按钮 =========================== */
+
+/**
+ * 为什么静止态就要够黑/够亮，而不是「hover 才显形」：
+ * 这是系统级控件，用户找不到就会骂；hover 只能是「更强的反馈」，不能是 0→1 的开关。
+ *
+ * 实测过的事实（dpr 1.5、浅色档、标题栏后面是壁纸灰 (211,213,215)）：
+ *   - glass.css:1301 让 .titlebar 背景透明（有意为之，壁纸要透到最上一行），
+ *     所以按钮的底色不是 --bg-0，而是「壁纸」；对比度要按壁纸算；
+ *   - 标题栏还会整条降透明度：components.css `.titlebar[data-focused='false']{opacity:0.82}`
+ *     （窗口失焦 / 缩到托盘时）→ 图标实际是 82% 的 alpha 叠在壁纸上；
+ *   - 旧值 --fg-1(#333b48) 叠完 = (80,87,98)，对壁纸 4.97:1；
+ *     新值 --fg-0(#14171d) 叠完 = (54,57,62)，对壁纸 7.85:1 —— 实测截图里最深像素 (54,57,63)。
+ * 深色档不用改：--fg-0 = #e8ecf4 是亮色，压深色底（#0a0c11）是 16.5:1。
+ */
+.titlebar .titlebar__btn {
+  color: var(--fg-0);
+
+  /* no-drag 必须落在按钮自己身上（要求 4）：只挂在 .titlebar__controls 上时，
+   * 一旦有人重排那一层，按钮就会掉回父级 .titlebar 的 drag 区里 —— 点击被系统吃掉。
+   * 拖拽区不因此受损：.titlebar__drag 自己没写 app-region，命中测试会往上走到
+   * .titlebar 的 drag（实测 .titlebar__drag 计算值仍是 drag）。 */
+  -webkit-app-region: no-drag;
+
+  transition:
+    background var(--t-1) var(--ease-standard),
+    color var(--t-1) var(--ease-standard);
+}
+
+/**
+ * 图标本体。
+ *
+ * 描边为什么写在 CSS 而不是 JSX 的属性上：属性其实是**生效的**（计算值 stroke 就是
+ * rgb(51,59,72)、stroke-opacity 1），所以问题不在「属性没生效」；把 stroke/线宽收到 CSS，
+ * 是为了让线宽、线帽、外光、颜色一处可改，并且下面那两条「层提升」只能由 CSS 施加。
+ */
+.titlebar__glyph {
+  display: block;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  /* 1.5 单位 = 1.5 CSS px = dpr 1.5 下 2.25 设备像素。
+   * 这一行管的是「线够不够实、跨设备像素均匀不均匀」：用仓库 scripts/inkcheck.py 的口径
+   * （比背景深 80 才算一墨点）数同一块按钮区，min/max/close 从旧值 1.1 的 96/154/135
+   * 变成 1.5 的 102/222/166 —— 墨点更多、边缘更整。
+   * 它**不**负责「暗度够不够」：逐像素算下来，旧 1.1 的线也有整覆盖的点，
+   * 最深像素 (80,86,98) 正好等于 --fg-1 乘上那条 0.82 复合 opacity。
+   * 黑度归 token（--fg-0）和透明度，粗细归这一行，两件事别混着解释。 */
+  stroke-width: 1.5;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+
+  /* 层提升 ①：外光 + 独立合成层。
+   * 光晕：标题栏是透明的（glass.css:1301），图标可能落在任意亮度的壁纸上，
+   *   一圈 --bg-0 色的光晕让线条边缘永远贴着一层「主题底」。实测很淡
+   *   （按钮带上最亮像素 (221,222,224) vs 壁纸 (211,213,215)，只抬 +10/通道），
+   *   它是缓解不是保证；要「任意壁纸都 3:1」得给 .titlebar__controls 加不透明底（未实施）。
+   * 更要紧的是合成：主控在运行实例上做过隔离实验（最小化改 3px 线宽、最大化改纯黑，
+   *   只改内联 style），他那一帧三个按钮 —— 连他根本没动的关闭按钮 —— 都是 0 墨点，
+   *   而同帧品牌 logo 有墨。也就是「整块控件区没进合成帧」这件事真实发生过，
+   *   跟线宽、颜色都无关。我把同一实验原样复跑（$env:TEMP\dsh-iso.png，脚本
+   *   dsh-iso-set.js）后 inkcheck 得到 最小化 141 / 最大化 154 / 关闭 135 墨点，
+   *   最深像素 (80,86,98)=--fg-1×0.82、(38,38,39)=纯黑×0.82 —— 参数都真实生效。
+   *   结论：这是**不稳定、不可依赖**的丢帧，所以这里主动把每个 glyph 提成自己的合成层，
+   *   不去赌外层大层什么时候重绘。这行 filter 是修复的一部分，不是装饰。 */
+  filter: drop-shadow(0 0 1px var(--bg-0));
+
+  /* 层提升 ②：稳定层身份。
+   * hover / active 本来就要改 transform（下面那两条），提前声明 will-change 既让浏览器
+   * 早一点提层，也不依赖 filter 的副作用 —— 将来有人为了「减少透明效果」把 filter 改掉，
+   * 层还在，图标不会跟着回到「看外层重绘时机」的状态。 */
+  will-change: transform;
+
+  transition: transform var(--t-1) var(--ease-standard);
+}
+
+/* ---------- 悬停：更强的反馈（底色由 components.css 的 hover 规则给，这里补字形放大） ---------- */
+
+.titlebar .titlebar__btn:hover:not(:disabled) .titlebar__glyph {
+  transform: scale(1.06);
+}
+
+/* 关闭按钮的红色危险底：与 components.css:270 同值镜像。
+ * 那边改了（或删了）这条，这里也一起删 —— 留着是为了让「关闭=红底」这个
+ * 系统惯例不依赖别人手里的文件。
+ * 这里**不**用 --p-ember：它是「注意/待处理」的强调色（浅色档 #a96a18 是橙的），
+ * 语义是「有事要处理」不是「危险」，拿来做关闭按钮会跟列表里的「可更新」同色。 */
+.titlebar .titlebar__btn--close:hover:not(:disabled) {
+  background: var(--danger);
+  color: var(--fg-inverse);
+}
+
+.titlebar .titlebar__btn--close:hover:not(:disabled) .titlebar__glyph {
+  transform: scale(1.06);
+}
+
+/* ---------- 按下：位移反馈（缩字形，不缩按钮盒） ---------- */
+
+/**
+ * 为什么不 scale 按钮本身：按钮盒是 44×37.33 的命中区，缩放它会让按下瞬间的
+ * 命中区与分隔线一起抖；只缩字形既有「按下去」的手感，又不动布局（要求 5）。
+ */
+.titlebar .titlebar__btn:active:not(:disabled) .titlebar__glyph {
+  transform: scale(0.88);
+  transition-duration: var(--t-1);
+}
+
+/* ---------- 键盘可达：焦点环（不新增颜色，用 --accent） ---------- */
+
+.titlebar .titlebar__btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+
+/* ============================ 动效降级 ============================ */
+
+/* 降级：reduced / off 档不做位移（两档 token 见 tokens.css:470 与 :513）。
+ * 底色与颜色变化保留 —— 那不是位移，人能跟得上。 */
+:root[data-motion='reduced'] .titlebar__glyph,
+:root[data-motion='off'] .titlebar__glyph {
+  transition: none;
+}
+
+:root[data-motion='reduced'] .titlebar .titlebar__btn:hover:not(:disabled) .titlebar__glyph,
+:root[data-motion='reduced'] .titlebar .titlebar__btn:active:not(:disabled) .titlebar__glyph,
+:root[data-motion='off'] .titlebar .titlebar__btn:hover:not(:disabled) .titlebar__glyph,
+:root[data-motion='off'] .titlebar .titlebar__btn:active:not(:disabled) .titlebar__glyph {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .titlebar__logo-img {
+    transition: none;
+  }
+
+  .titlebar__glyph {
+    transition: none;
+  }
+
+  .titlebar .titlebar__btn:hover:not(:disabled) .titlebar__glyph,
+  .titlebar .titlebar__btn:active:not(:disabled) .titlebar__glyph {
+    transform: none;
+  }
+}

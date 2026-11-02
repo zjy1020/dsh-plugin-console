@@ -1,0 +1,394 @@
+/*
+ * gallery.css —— 插件详情里「图片」区的样式。
+ *
+ * 约束：只用 tokens.css 里的 CSS 变量（不写死颜色）、选择器全部是类（零 element 选择器）、
+ * 类名前缀统一 gal- / gal__ / gal-preview*。面板是窄栏（约 400px），一切按窄栏设计。
+ */
+
+/* ---------------- 外壳 ---------------- */
+
+.gal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.gal--compact {
+  gap: var(--space-1);
+}
+
+.gal__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 22px;
+}
+
+/* 「8 张截图，来自 GitHub raw 的 README.md」这一行是图集唯一的状态读数，
+   原来用 --fg-2 —— 那是给旧的 --bg-2 实色面板配的弱化色，现在它落在半透明的
+   --gl-bed-color 衬底上，壁纸一浅、衬底合成值一变凉，这行就成了一条读不出的灰线
+   （主控截图里糊在壁纸上的正是它）。抬到 --fg-1，最坏情况仍有 5.5:1。 */
+.gal__meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-xxs);
+  line-height: 1.5;
+  color: var(--fg-1);
+  word-break: break-word;
+}
+
+/* 只在读屏里存在的状态播报 */
+.gal__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------------- 网格 ---------------- */
+
+/* 自适应列数：窄栏（400px 左右）自动落成 2 列，面板宽了才排到 3 列，
+   保证每张缩略图不会小到看不清。
+
+   为什么下限写 min(140px, 100%) 而不是光秃秃的 140px：
+   详情面板的宽度是 flex:0 0 var(--detail-w) + max-width:46vw，窗口被拖窄时它也跟着窄。
+   一旦面板内容宽掉到 140px 以下，auto-fill 仍会摆出一条 140px 的轨道 —— 轨道比容器宽，
+   横向就溢出了，圆角衬底上能看到一条被切掉的图。min(140px, 100%) 让下限最多等于容器宽，
+   容器再窄也只是缩成单列，不会撑破。
+   400px 面板扣掉衬底外边距与正文左右各 --sp-4（16px）后约 360–376px：
+   两列各约 176–184px，扣 gap 后正好落在 140 以上 —— 既排不出第三列，也不会出半列。 */
+.gal__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr));
+  gap: var(--space-2);
+}
+
+.gal--compact .gal__grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(104px, 100%), 1fr));
+  gap: var(--space-1);
+}
+
+.gal__thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  /* 显式 0：网格项默认 min-width:auto，单元格里只要有比轨道更宽的内容
+     （长文件名的 aria-label 不会，但 .gal__thumb-size 的等宽数字会），
+     轨道就会把整行撑出容器。overflow:hidden 正常情况下已经兜住了，这里写明不靠它。 */
+  min-width: 0;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  margin: 0;
+  /* 边框从 --border-soft 换成材质层的 --gl-bed-edge：缩略图现在整排落在
+     --gl-bed-color 衬底上，--border-soft 是给旧 --bg-2 实色面板配的，
+     落在衬底上和底色几乎同值 —— 一排图会重新变回「浮在壁纸上」。 */
+  border: 1px solid var(--gl-bed-edge);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  overflow: hidden;
+  cursor: zoom-in;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.gal__thumb-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  /* cover 而不是 fill：格子是 1/1，README 截图基本是宽图，
+     fill 会把人家的截图横向拉扁；cover 只裁不变形。 */
+  object-fit: cover;
+  background: var(--bg-sunken);
+}
+
+.gal__thumb-size {
+  position: absolute;
+  left: var(--space-1);
+  bottom: var(--space-1);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-xs);
+  background: var(--scrim);
+  color: var(--fg-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xxs);
+  line-height: 1.5;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.gal__thumb:hover {
+  border-color: var(--accent-line);
+}
+
+.gal__thumb:hover .gal__thumb-size,
+.gal__thumb:focus-visible .gal__thumb-size {
+  opacity: 1;
+}
+
+.gal__thumb:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* 骨架块：和缩略图同宽高比，占位高度一致，加载完面板不会跳动 */
+.gal__skeleton {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  animation: gal-breathe 1.6s var(--ease-in-out) infinite;
+}
+
+@keyframes gal-breathe {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+/* ---------------- 文案与状态 ---------------- */
+
+/* 原来是 --fg-3。--fg-3（#4a5260）是「装饰 / 禁用态」那一档，落在 --gl-bed-color
+   衬底上（最坏情况：白壁纸透过来，合成值约 #545c5c）对比度只剩 1.3:1 —— 这行提示
+   在图集底下等于不存在。抬到 --fg-2：它是可以再弱一点的辅助信息，但得先看得见。 */
+.gal__hint {
+  font-size: var(--fs-xxs);
+  line-height: 1.5;
+  color: var(--fg-2);
+}
+
+.gal__note {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--fg-2);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+}
+
+.gal__warns {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.gal__warn-line {
+  color: var(--warn);
+  font-size: var(--fs-xxs);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.gal__error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--danger-line);
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+}
+
+.gal__error-text {
+  color: var(--danger-hi);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.gal__error-hint {
+  color: var(--fg-2);
+  font-size: var(--fs-xxs);
+  line-height: 1.6;
+}
+
+/* ---------------- README 外链 ---------------- */
+
+.gal__links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* 同 .gal__hint：--fg-3 落在衬底上读不出来，而这行是「README 外链」这一组的组名，
+   找不到组名就不知道下面那排链接是干什么的。 */
+.gal__links-label {
+  font-size: var(--fs-xxs);
+  color: var(--fg-2);
+}
+
+.gal__links-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+}
+
+.gal__link {
+  max-width: 100%;
+  font-size: var(--fs-xs);
+  text-align: left;
+}
+
+/* ---------------- 预览层（严格盖在详情面板上） ---------------- */
+
+.gal-preview {
+  position: fixed;
+  z-index: var(--z-drawer);
+  display: flex;
+  background: var(--scrim);
+  animation: gal-fade var(--dur-base) var(--ease-out);
+}
+
+.gal-preview:focus-visible {
+  outline: none;
+}
+
+/* ⚠ 详情面板改造后必须跟的一条：预览层的坐标基准变了。
+ *
+ * 组件里这一层是 position:fixed，left/top/width/height 是内联写的绝对值 ——
+ * PluginGallery.tsx:102-105 拿 `rootRef.closest('.detail').getBoundingClientRect()`
+ * 量出来的是**视口坐标**（x≈920），然后当内联样式直接写上去。
+ *
+ * 面板以前是透明板，身上没有任何会建「包含块」的属性，fixed 就真的相对视口，
+ * 这组坐标成立。现在 glass.css 给 `.app__body > .detail` 加了 backdrop-filter
+ * （以及 overflow:hidden、16px 圆角），而 backdrop-filter 的父元素会成为
+ * position:fixed 后代的**包含块** —— 于是那份视口坐标被当成「面板内部的偏移」，
+ * 预览层整体再往右下平移 (920, 29)，同时被面板的 overflow:hidden 当场裁掉，
+ * 点缩略图会什么都不出来（或者只露一个角）。
+ *
+ * 修法不去动组件（它不属于本次范围，而且量视口的逻辑在别的调用点仍然是必要的）：
+ * 在这里用 inset:0 把它按回「铺满最近的 filtered 祖先」，再用 !important
+ * 压掉那四个内联值（内联样式没有 !important，样式表里的 !important 赢）。
+ * 结果：预览层严格等于面板内框，也是一块圆角悬浮层，正好配合新外观。
+ * 只针对 .detail 作用域 —— 图集若被放进 marketplace 标签页，那条路径不受影响。 */
+.detail .gal-preview {
+  inset: 0 !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+.gal-preview__box {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  margin: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-1);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+}
+
+.gal-preview__head,
+.gal-preview__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-3);
+}
+
+.gal-preview__head {
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.gal-preview__foot {
+  border-top: 1px solid var(--border-soft);
+}
+
+.gal-preview__counter {
+  font-size: var(--fs-xxs);
+  color: var(--fg-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.gal-preview__spacer {
+  flex: 1 1 auto;
+}
+
+.gal-preview__close {
+  flex: 0 0 auto;
+}
+
+.gal-preview__stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--space-2);
+  background: var(--bg-0);
+  overflow: hidden;
+}
+
+.gal-preview__img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--radius-xs);
+}
+
+.gal-preview__caption {
+  flex: 0 0 auto;
+  padding: 0 var(--space-3) var(--space-2);
+  max-height: 4.5em;
+  overflow: hidden;
+  color: var(--fg-1);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.gal-preview__hint {
+  font-size: var(--fs-xxs);
+  color: var(--fg-3);
+}
+
+@keyframes gal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 关动画：骨架不呼吸、缩略图不做过场、预览层不淡入 */
+@media (prefers-reduced-motion: reduce) {
+  .gal__skeleton {
+    animation: none;
+    opacity: 0.7;
+  }
+
+  .gal__thumb {
+    transition: none;
+  }
+
+  .gal-preview {
+    animation: none;
+  }
+}

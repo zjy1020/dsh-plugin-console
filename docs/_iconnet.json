@@ -1,0 +1,87 @@
+{
+  "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;",
+  "onLine": true,
+  "location": "file:///D:/%E9%A1%B9%E7%9B%AE/DSH/deepseekharness%E6%8F%92%E4%BB%B6%E5%8F%B0/out/renderer/index.html",
+  "results": [
+    {
+      "url": "https://raw.githubusercontent.com/DayuanJiang/next-ai-draw-io/main/packages/dsh-plugin/icon.png",
+      "flavor": "声明 icon（自己声明、之前实测能加载）",
+      "r": "load 192x192",
+      "ms": 0
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Utmotc/dsh-balance-card/HEAD/assets/icon.svg",
+      "flavor": "猜的候选（已知命中过）",
+      "r": "load 32x32",
+      "ms": 785
+    },
+    {
+      "url": "https://raw.githubusercontent.com/github/explore/main/topics/nodejs/nodejs.png",
+      "flavor": "肯定存在的公共图",
+      "r": "load 288x288",
+      "ms": 594
+    },
+    {
+      "url": "https://raw.githubusercontent.com/github/explore/main/topics/nodejs/nope-xyz.png",
+      "flavor": "肯定不存在的路径",
+      "r": "error",
+      "ms": 640
+    }
+  ],
+  "fetch": {
+    "error": "Failed to fetch"
+  },
+  "cardImgs": 5,
+  "cardDecoded": 5,
+  "violations": [],
+  "resources": [
+    {
+      "name": "hubusercontent.com/PC2005-cloud/dsh-pet/HEAD/assets/icon.svg",
+      "ms": 1,
+      "size": 0,
+      "end": 8696
+    },
+    {
+      "name": "tent.com/gsmqmwq1/dsh-skills-market/HEAD/assets/icon-180.png",
+      "ms": 2,
+      "size": 0,
+      "end": 12302
+    },
+    {
+      "name": "tent.com/nuolingmo/dsh-market-notes/HEAD/assets/icon-180.png",
+      "ms": 2,
+      "size": 0,
+      "end": 12302
+    },
+    {
+      "name": "krant-Aleph/dshmarket-update-helper/HEAD/assets/icon-180.png",
+      "ms": 2,
+      "size": 0,
+      "end": 12302
+    },
+    {
+      "name": "nt.com/zuwenyin/dsh-plugin-upgrader/HEAD/assets/icon-180.png",
+      "ms": 2,
+      "size": 0,
+      "end": 12302
+    },
+    {
+      "name": ".com/huangziyuan-general/dsh-xuanji/main/assets/icon-180.png",
+      "ms": 3,
+      "size": 0,
+      "end": 12317
+    },
+    {
+      "name": "rcontent.com/gsmqmwq1/dsh-skills-market/HEAD/assets/icon.png",
+      "ms": 3,
+      "size": 0,
+      "end": 12318
+    },
+    {
+      "name": "rcontent.com/nuolingmo/dsh-market-notes/HEAD/assets/icon.png",
+      "ms": 3,
+      "size": 0,
+      "end": 12318
+    }
+  ]
+}

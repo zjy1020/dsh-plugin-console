@@ -1,0 +1,1293 @@
+{
+  "startedAt": "2026-11-02T05:37:17.716Z",
+  "total": 8281,
+  "declaredIcon": 478,
+  "guessPool": 7803,
+  "sampled": 12,
+  "dshPool": 6759,
+  "dshSampled": 12,
+  "dshRows": [
+    {
+      "name": "dsh-plugin-workspace-split",
+      "npm": null,
+      "repo": "byf1999/dsh-plugin-workspace-split",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 2
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 1
+        }
+      ]
+    },
+    {
+      "name": "dsh-wallpaper",
+      "npm": null,
+      "repo": "fl0-0wer/dsh-wallpaper",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 718
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 742
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 752
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 650
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 668
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 671
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 630
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 685
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 1295
+        }
+      ]
+    },
+    {
+      "name": "dsh-plugin-virtuoso-layout#dsh-plugin-virtuoso-layout",
+      "npm": null,
+      "repo": "uos1231234/dsh-plugin-virtuoso-layout",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 655
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 662
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 697
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 618
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 776
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 624
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 739
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 654
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 674
+        }
+      ]
+    },
+    {
+      "name": "dsh-genspark",
+      "npm": null,
+      "repo": "kgmkm/dsh-genspark",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 750
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 629
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 698
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 703
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 659
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 654
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 582
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 649
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 691
+        }
+      ]
+    },
+    {
+      "name": "dsh-agent-picker",
+      "npm": "dsh-agent-picker",
+      "repo": "Ok541151/cwk",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 658
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 655
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 655
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 801
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 759
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 675
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 787
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 667
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 1150
+        }
+      ]
+    },
+    {
+      "name": "dsh-tool-notion",
+      "npm": "dsh-tool-notion",
+      "repo": "yuehancn/dsh-tool-notion",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 705
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 692
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 821
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 708
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 710
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 737
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 719
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 615
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 697
+        }
+      ]
+    },
+    {
+      "name": "dsh-mcptoon",
+      "npm": null,
+      "repo": "activeing123/dsh-mcptoon",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 816
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 604
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 644
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 730
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 1241
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 789
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 704
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 639
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 667
+        }
+      ]
+    },
+    {
+      "name": "dsh-model-capabilities",
+      "npm": null,
+      "repo": "Kalospacer/dsh-model-capabilities",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 658
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 821
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 741
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 698
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 864
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 696
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 630
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 736
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 735
+        }
+      ]
+    },
+    {
+      "name": "dsh-plugin-kit#profile",
+      "npm": "@hyzyn/dsh-profile",
+      "repo": "hyzyn/dsh-plugin-kit",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 652
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 906
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 746
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 742
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 658
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 679
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 826
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 792
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 669
+        }
+      ]
+    },
+    {
+      "name": "dsh-stability-audit",
+      "npm": null,
+      "repo": "chunfenxiazhi-collab/dsh-stability-audit",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 688
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 780
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 752
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 655
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 823
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 758
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 666
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 810
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 644
+        }
+      ]
+    },
+    {
+      "name": "dsh-icon-theme",
+      "npm": "dsh-icon-theme",
+      "repo": "yzke/dsh-icon-theme",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 734
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 628
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 783
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 782
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 774
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 590
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 660
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 876
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 702
+        }
+      ]
+    },
+    {
+      "name": "dsh-custom-brand",
+      "npm": null,
+      "repo": "baisama-cloud/dsh-custom-brand",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 878
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 647
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 746
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 741
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 742
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 656
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 662
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 1143
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 744
+        }
+      ]
+    }
+  ],
+  "dshHits": 0,
+  "dshHitRate": "0/12",
+  "rows": [
+    {
+      "name": "dsh-plugin-workspace-split",
+      "npm": null,
+      "repo": "byf1999/dsh-plugin-workspace-split",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 7
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 10
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 4
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 2
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 2
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 2
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 1
+        }
+      ]
+    },
+    {
+      "name": "dsh-usage-ledger",
+      "npm": null,
+      "repo": "cp990207/dsh-usage-ledger",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 2
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 1
+        }
+      ]
+    },
+    {
+      "name": "dsh-confirm-gate",
+      "npm": "@steelunion/dsh-confirm-gate",
+      "repo": "SteelUnion/dsh-confirm-gate",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 1
+        }
+      ]
+    },
+    {
+      "name": "dsh-primitive-pulse",
+      "npm": null,
+      "repo": "DreamLoomStudio/dsh-primitive-pulse",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 1
+        }
+      ]
+    },
+    {
+      "name": "markdown_monitor",
+      "npm": null,
+      "repo": "jessehoo89/markdown_monitor",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 1
+        }
+      ]
+    },
+    {
+      "name": "dsh-prompt-polish",
+      "npm": "@benrong/dsh-prompt-polish",
+      "repo": "benrong2048-boop/dsh-prompt-polish",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 2
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 1
+        }
+      ]
+    },
+    {
+      "name": "dsh-hybrid-notify",
+      "npm": "dsh-hybrid-notify",
+      "repo": "john-walks-slow/dsh-hybrid-notify",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 2
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 1
+        }
+      ]
+    },
+    {
+      "name": "dsh-git-panel",
+      "npm": "dsh-git-panel",
+      "repo": "a792883583/dsh-git-panel",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 1
+        }
+      ]
+    },
+    {
+      "name": "dsh-plugin-save-token",
+      "npm": "dsh-plugin-save-token",
+      "repo": "vibe-any/dsh-plugin-save-token",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 2
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 1
+        }
+      ]
+    },
+    {
+      "name": "dsh-plugin-rollout-scout",
+      "npm": "dsh-plugin-rollout-scout",
+      "repo": "SpookySandwich/dsh-plugin-rollout-scout",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 1
+        }
+      ]
+    },
+    {
+      "name": "dsh-projects",
+      "npm": null,
+      "repo": "WenhongPan/dsh-projects",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 1
+        }
+      ]
+    },
+    {
+      "name": "dsh-cyber-particle",
+      "npm": null,
+      "repo": "AKS1st/dsh-cyber-particle",
+      "hit": null,
+      "tries": [
+        {
+          "c": "assets/icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon-180.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "assets/logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "logo.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/icon.png",
+          "r": "error",
+          "ms": 1
+        },
+        {
+          "c": "public/logo.png",
+          "r": "error",
+          "ms": 2
+        },
+        {
+          "c": "assets/icon.svg",
+          "r": "error",
+          "ms": 1
+        }
+      ]
+    }
+  ],
+  "hits": 0,
+  "hitRate": "0/12",
+  "timeouts": 0,
+  "errors": 108,
+  "loads": 0,
+  "avgTryMs": 1
+}
