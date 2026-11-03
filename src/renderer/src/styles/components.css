@@ -1460,7 +1460,12 @@
   min-height: 0;
   min-width: 0;
   border-top: none;
-  background: var(--bg-sunken);
+  /* 2026-11-03：日志页原来是一整块不透明的 --bg-sunken（#070910），把主区
+     shell-main 的玻璃衬底（--gl-bed-color + panel-alpha/panel-blur）整个盖死 ——
+     所以改透明度 / 模糊「日志那里就不动」（用户原话）。
+     现在 alpha 跟「面板透明度」滑杆同一本账（--panel-alpha），外加 +20% 的文本保底 ——
+     日志是读字的地方，永远比插件列表实一档，但滑杆拉满/拉空时它会跟着整体一起变。 */
+  background: color-mix(in srgb, var(--bg-sunken) calc(var(--panel-alpha) * 100% + 20%), transparent);
 }
 
 .logdrawer__head {
@@ -1470,7 +1475,8 @@
   gap: var(--space-3);
   padding: 0 var(--space-3);
   border-bottom: 1px solid var(--border);
-  background: var(--bg-1);
+  /* 同上：原来是不透明 --bg-1，跟外壳一起把主题玻璃盖死；alpha 跟滑杆同一本账 */
+  background: color-mix(in srgb, var(--bg-1) calc(var(--panel-alpha) * 100% + 15%), transparent);
 }
 
 .logdrawer__title {
@@ -1814,6 +1820,11 @@
 
 .dialog--settings {
   width: 780px; /* 左导航 128px + 右内容 640px 左右，比原来宽一截 */
+  /* 2026-11-03：钉死高度（用户原话「在设置里面切页面就自动变大小，能不能固定一下」）。
+     原来只有 max-height: 88vh —— 高度由内容撑，从「外观」（一大页）切到
+     「常规」（一小页）时整个对话框塌一下又弹一下。钉死之后 dialog__body(flex:1)
+     → settings__layout(flex:1) → settings__pane(自己滚) 自动接管剩余高度，内容矮也不缩。 */
+  height: min(660px, 88vh);
 }
 
 .settings__layout {

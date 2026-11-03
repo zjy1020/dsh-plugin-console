@@ -65,15 +65,15 @@ export function PluginRow({
       <div className="prow__main">
         <div className="prow__line1">
           {/*
-            批量更新的复选框。只对能真正更新的行可用，其余渲染成禁用态 + title 说明为什么
-            （能更新的行才有资格进「更新选中」的名单，勾了也是白勾）。
+            批量操作的复选框（2026-11-03 放宽：可批量更新 / 停用 / 启用 / 卸载的行都可用，
+            其余渲染成禁用态 + title 说明为什么）。
             stopPropagation 是必须的：整行的 onClick 是「打开右侧详情」，
             不拦住的话点一下复选框会顺带把详情也切走。
           */}
           <span
             className={`checkbox prow__pick${pickable ? '' : ' is-off'}`}
             onClick={(e) => e.stopPropagation()}
-            title={pickable ? (picked ? '取消勾选' : '勾选，纳入「更新选中」') : pickBlockReason}
+            title={pickable ? (picked ? '取消勾选' : '勾选，纳入批量操作') : pickBlockReason}
           >
             <input
               type="checkbox"
@@ -82,8 +82,8 @@ export function PluginRow({
               onChange={() => onTogglePick(rec.name)}
               aria-label={
                 pickable
-                  ? `${picked ? '取消勾选' : '勾选'} ${rec.name}，纳入批量更新`
-                  : `${rec.name} 不参与批量更新：${pickBlockReason}`
+                  ? `${picked ? '取消勾选' : '勾选'} ${rec.name}，纳入批量操作`
+                  : `${rec.name} 不参与批量操作：${pickBlockReason}`
               }
             />
           </span>

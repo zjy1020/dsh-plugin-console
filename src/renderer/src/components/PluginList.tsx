@@ -7,24 +7,31 @@
 
 import { useState } from 'react'
 
-import { useConsole, hasUpdateError, isUpdateTarget } from '../lib/store'
+import { useConsole, isUpdateTarget } from '../lib/store'
 import type { PluginRecord } from '../../../shared/types'
 import { formatProgress, percentOf } from '../lib/format'
 import { EmptyState } from './EmptyState'
 import { PluginRow } from './PluginRow'
 
 /**
+ * 这一行能不能勾选（2026-11-03 放宽：用户原话「无法多选插件……还要支持多选删除，停用等」）。
+ *
+ * 以前勾选只服务于「更新选中」，没有更新的包一律禁选 —— 于是绝大多数行的复选框
+ * 永远是禁用光标。现在勾选池 = 已装 + 可卸载（可批量更新 / 停用 / 启用 / 卸载），
+ * 只有官方内置和未落盘的条目保持不可勾。
+ */
+function isBatchActionable(rec: PluginRecord): boolean {
+  return rec.installed && rec.removable
+}
+
+/**
  * 这一行为什么不能勾选（给禁用的复选框当 title）。
- * 直接禁用不给理由的话，用户会以为这行漏了，而不是「它本来就不需要更新」。
+ * 直接禁用不给理由的话，用户会以为这行漏了，而不是「它本来就不参与批量操作」。
  */
 function pickBlockReason(rec: PluginRecord): string {
-  if (!rec.installed) return '没装到这个 profile 里，要更新先「重新安装」'
-  if (rec.builtin) return '官方内置包随 DSH 一起发布，更新走 DSH 自身的升级'
-  if (rec.sourceKind === 'link' || rec.sourceKind === 'workspace') {
-    return '本地开发来源（link / workspace），更新走 git 或源目录，不走 npm'
-  }
-  if (hasUpdateError(rec)) return '上次检查更新失败，先重新点「检查更新」'
-  return '已经是最新版'
+  if (!rec.installed) return '没装到这个 profile 里，没有可批量操作的东西'
+  if (rec.builtin) return '官方内置包随 DSH 一起发布，不参与批量操作'
+  return '主进程判定该包不可卸载（被其他包依赖），不能纳入批量操作'
 }
 
 function SkeletonRows({ count = 7 }: { count?: number }) {
@@ -73,15 +80,21 @@ export function PluginList() {
       p.sourceKind !== 'workspace'
   ).length
 
-  /* ---------------- 批量更新的勾选 ---------------- *
+  /* ---------------- 批量操作的勾选 ---------------- *
    * 勾选集合本身存在 store（state.picks），这里只算「当前可见的那些能勾 / 勾了几个」：
-   * 表头全选只作用于看得见的行，否则在「可更新」筛选下点全选会连带勾上被筛掉的包。 */
-  const pickableVisible = visible.filter(isUpdateTarget).map((p) => p.name)
+   * 表头全选只作用于看得见的行，否则在筛选下点全选会连带勾上被筛掉的包。
+   * 口径跟着勾选池放宽：已装 + 可卸载（不再要求「有更新」）。 */
+  const pickableVisible = visible.filter(isBatchActionable).map((p) => p.name)
   const pickedSet = new Set(state.picks)
   const pickedCount = state.picks.length
   const pickedVisible = pickableVisible.filter((name) => pickedSet.has(name)).length
   const allPicked = pickableVisible.length > 0 && pickedVisible === pickableVisible.length
   const somePicked = pickedVisible > 0 && !allPicked
+  /* 勾上的那批里，各类批量操作各有多少条真的可做 —— 没有的那类按钮禁用 */
+  const pickedList = state.plugins.filter((p) => pickedSet.has(p.name))
+  const pickedUpdatable = pickedList.filter(isUpdateTarget).length
+  const pickedDisablable = pickedList.filter((p) => !p.disabled).length
+  const pickedEnablable = pickedList.filter((p) => p.disabled).length
 
   /** 导出清单：store 负责弹保存对话框、写文件、成功/失败各自弹 toast；
    *  用户取消（error === '已取消'）是正常路径，store 已经静默，这里不补报错 */
@@ -185,7 +198,7 @@ export function PluginList() {
             rec={rec}
             selected={state.selectedId === rec.id}
             busy={opBusy}
-            pickable={isUpdateTarget(rec)}
+            pickable={isBatchActionable(rec)}
             picked={pickedSet.has(rec.name)}
             pickBlockReason={pickBlockReason(rec)}
             onTogglePick={actions.togglePick}
@@ -252,18 +265,56 @@ export function PluginList() {
             {checking ? '检查中…' : '检查更新'}
           </button>
 
-          {/* 只在真的勾了东西时才出现：没勾选的时候它就是一个永远禁用的按钮，占地方 */}
+          {/* 勾了东西才出现的一组批量操作（2026-11-03：从「更新选中」扩成四件套 ——
+              勾选池放宽之后，勾选不再只服务于更新） */}
           {pickedCount > 0 ? (
-            <button
-              type="button"
-              className="btn btn--sm"
-              onClick={() => void actions.updateSelected()}
-              disabled={opBusy}
-              title={`只更新勾选的这 ${pickedCount} 个（确认弹窗里列出的就是执行名单）`}
-            >
-              {updatingSelected ? <span className="spinner spinner--sm" /> : null}
-              更新选中 ({pickedCount})
-            </button>
+            <>
+              <button
+                type="button"
+                className="btn btn--sm"
+                onClick={() => void actions.updateSelected()}
+                disabled={opBusy || pickedUpdatable === 0}
+                title={
+                  pickedUpdatable === 0
+                    ? '勾选的插件里没有可更新的'
+                    : `只更新勾选的这 ${pickedUpdatable} 个（确认弹窗里列出的就是执行名单）`
+                }
+              >
+                {updatingSelected ? <span className="spinner spinner--sm" /> : null}
+                更新选中{pickedUpdatable > 0 ? ` (${pickedUpdatable})` : ''}
+              </button>
+              <button
+                type="button"
+                className="btn btn--sm"
+                onClick={() => void actions.disableSelected()}
+                disabled={opBusy || pickedDisablable === 0}
+                title={
+                  pickedDisablable === 0
+                    ? '勾选的插件都已处于停用状态'
+                    : `把这 ${pickedDisablable} 个从加载层摘掉（已装文件不动，可再启用）`
+                }
+              >
+                停用选中{pickedDisablable > 0 ? ` (${pickedDisablable})` : ''}
+              </button>
+              <button
+                type="button"
+                className="btn btn--sm"
+                onClick={() => void actions.enableSelected()}
+                disabled={opBusy || pickedEnablable === 0}
+                title={pickedEnablable === 0 ? '勾选的插件没有停用的' : `把这 ${pickedEnablable} 个放回加载层`}
+              >
+                启用选中{pickedEnablable > 0 ? ` (${pickedEnablable})` : ''}
+              </button>
+              <button
+                type="button"
+                className="btn btn--sm btn--danger"
+                onClick={() => void actions.uninstallSelected()}
+                disabled={opBusy}
+                title={`逐个跑 pnpm remove，把勾选的 ${pickedCount} 个真正移除（有确认弹窗）`}
+              >
+                卸载选中 ({pickedCount})
+              </button>
+            </>
           ) : null}
 
           <button
@@ -383,7 +434,7 @@ export function PluginList() {
             title={
               pickableVisible.length === 0
                 ? '当前列表里没有可勾选的插件'
-                : `全选当前列表里 ${pickableVisible.length} 个可更新的插件`
+                : `全选当前列表里 ${pickableVisible.length} 个可批量操作的插件（更新 / 停用 / 启用 / 卸载）`
             }
           >
             <input
@@ -394,7 +445,7 @@ export function PluginList() {
               checked={allPicked}
               disabled={pickableVisible.length === 0}
               onChange={(e) => actions.setPicks(e.target.checked ? pickableVisible : [])}
-              aria-label="全选可更新的插件"
+              aria-label="全选可批量操作的插件"
             />
           </label>
           插件

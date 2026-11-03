@@ -892,6 +892,17 @@ export interface ConsoleActions {
   updateAll: () => Promise<void>
   /** 批量更新「勾选的那批」（目标来自 state.picks，与确认弹窗里列出的完全一致） */
   updateSelected: () => Promise<void>
+  /**
+   * 批量停用 / 启用 / 卸载勾选的那批（2026-11-03：用户原话「还要支持多选删除，停用等」）。
+   *
+   * 勾选池放宽到「已装 + 可卸载」之后，勾选不再只服务于更新 —— 这三个走
+   * 渲染层串行循环（每个包一次单件 op），不新造主进程批量 kind：
+   * 停用 / 启用本来就不走 pnpm（只摘 bundles + 记自己的 state），循环零成本；
+   * 卸载每条一条 pnpm remove，官方通道的备份 / 快照 / 回滚护栏一条不缺。
+   */
+  disableSelected: () => Promise<void>
+  enableSelected: () => Promise<void>
+  uninstallSelected: () => Promise<void>
   /** 勾选 / 取消勾选一个包（只对 isUpdateTarget 的行有意义） */
   togglePick: (name: string) => void
   /** 整体替换勾选集合：表头三态（全选 / 清空）用 */
@@ -1407,7 +1418,124 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
     })
   }, [requestConfirm, runOp, toast])
 
-  /** 单行勾选：只改一个包名，其余原样保留（所以不能在组件里 useState 存） */
+  /**
+   * 勾选池按 picks 取记录（三个批量操作共用）。
+   *
+   * 和 updateSelected 同一条纪律：名单以「确认弹窗里列出的」为准 —— 弹窗列了几个，
+   * 执行的就是几个。清单里已经不存在的包两边同时消失。
+   */
+  const pickedRecords = () => {
+    const profile = stateRef.current.activeProfile
+    if (!profile) return null
+    const picks = stateRef.current.picks
+    const list = stateRef.current.plugins.filter((p) => picks.includes(p.name))
+    return { profile, list }
+  }
+
+  /** 批量操作确认弹窗的名单（列全量，弹窗自己滚动） */
+  const batchBullets = (list: PluginRecord[]): string[] =>
+    list.map((p) => {
+      const state = p.disabled ? '已停用' : p.inBundles ? '加载中' : '未加载'
+      return `${p.name}${p.version ? ` ${p.version}` : ''}（${state}${p.builtin ? '，官方内置' : ''}）`
+    })
+
+  /**
+   * 串行跑完一批单件操作。逐条 await：上一条的 pnpm 没落地，下一条不该起跑
+   * （pnpm 的 store 锁虽然会排队，但「并行 N 个进程互相等锁」在日志里是一片乱麻）。
+   * 每条跑完 runOp 内部自己刷新清单 / 弹结果条；这里最后补一句汇总。
+   *
+   * 单条失败不停批（最后汇总 x / N）；用户点「取消」停的是当前那一条 ——
+   * 这里顺着主进程带回的取消信号把整批停掉，不然「取消」只拦一条，剩下的
+   * 又自己跑起来，跟没取消一样。
+   */
+  const runBatch = async (
+    profile: string,
+    list: PluginRecord[],
+    kind: 'disable' | 'enable' | 'uninstall'
+  ) => {
+    const verb = kind === 'disable' ? '停用' : kind === 'enable' ? '启用' : '卸载'
+    let okCount = 0
+    for (const rec of list) {
+      const res = await runOp({ kind, profile, targets: [rec.name] }, `${verb} ${rec.name}`)
+      if (res?.ok) {
+        okCount += 1
+        continue
+      }
+      if (res && /取消|abort|cancel/i.test(res.message ?? '')) {
+        toast('warn', `已停止${verb}：完成 ${okCount} / ${list.length}`, '取消后剩余的条目没有执行。')
+        return
+      }
+    }
+    toast(
+      okCount === list.length ? 'success' : 'warn',
+      `${verb}完成：${okCount} / ${list.length}`,
+      okCount === list.length ? undefined : '失败的条目在操作日志里有完整输出。'
+    )
+  }
+
+  const disableSelected = useCallback(async () => {
+    const picked = pickedRecords()
+    if (!picked) return
+    const { profile, list } = picked
+    /* 只对「正在加载层里」的有意义：已经停用的再停一次是空操作 */
+    const targets = list.filter((p) => !p.disabled)
+    if (targets.length === 0) {
+      toast('info', '勾选的插件都已经是停用状态')
+      return
+    }
+    requestConfirm({
+      title: `停用选中的 ${targets.length} 个包？`,
+      message: `把下面这些包从 profile「${profile}」的加载层（dsh.profile.bundles）里摘掉，已安装的文件不动。`,
+      bullets: batchBullets(targets),
+      notes: ['重启 DSH 后生效（这批包不再被加载）。随时可以勾回来「启用」。'],
+      confirmLabel: '停用选中',
+      onConfirm: () => void runBatch(profile, targets, 'disable')
+    })
+  }, [requestConfirm, toast])
+
+  const enableSelected = useCallback(async () => {
+    const picked = pickedRecords()
+    if (!picked) return
+    const { profile, list } = picked
+    const targets = list.filter((p) => p.disabled)
+    if (targets.length === 0) {
+      toast('info', '勾选的插件没有处于停用状态')
+      return
+    }
+    requestConfirm({
+      title: `启用选中的 ${targets.length} 个包？`,
+      message: `把下面这些包放回 profile「${profile}」的加载层（按原来的位置顺序插回去）。`,
+      bullets: batchBullets(targets),
+      notes: ['重启 DSH 后生效。'],
+      confirmLabel: '启用选中',
+      onConfirm: () => void runBatch(profile, targets, 'enable')
+    })
+  }, [requestConfirm, toast])
+
+  const uninstallSelected = useCallback(async () => {
+    const picked = pickedRecords()
+    if (!picked) return
+    const { profile, list } = picked
+    /* 勾选池本身已经按「已装 + 可卸载」过滤，这里只挡漏网的不可卸载条目 */
+    const targets = list.filter((p) => p.removable)
+    if (targets.length === 0) {
+      toast('info', '勾选的插件都不可卸载（官方内置或被依赖）')
+      return
+    }
+    requestConfirm({
+      title: `卸载选中的 ${targets.length} 个包？`,
+      message: `把下面这些包从 profile「${profile}」的依赖里真正移除（逐个跑 pnpm remove），文件会从 node_modules 删除。`,
+      bullets: batchBullets(targets),
+      notes: [
+        '此操作不可撤销；profile 的 package.json 每一步都有备份，但卸掉的包要装回来得重新下载。',
+        'link / workspace 来源的包只解链，本地源码目录不受影响。'
+      ],
+      confirmLabel: '卸载选中',
+      danger: true,
+      requireText: '卸载',
+      onConfirm: () => void runBatch(profile, targets, 'uninstall')
+    })
+  }, [requestConfirm, toast])
   const togglePick = useCallback((name: string) => {
     const cur = stateRef.current.picks
     dispatch({
@@ -1740,6 +1868,9 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
       updateOne,
       updateAll,
       updateSelected,
+      disableSelected,
+      enableSelected,
+      uninstallSelected,
       togglePick,
       setPicks,
       toggleOne,
@@ -1783,6 +1914,9 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
       updateOne,
       updateAll,
       updateSelected,
+      disableSelected,
+      enableSelected,
+      uninstallSelected,
       togglePick,
       setPicks,
       toggleOne,
