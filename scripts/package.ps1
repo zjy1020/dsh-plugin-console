@@ -69,9 +69,20 @@ $env:CSC_IDENTITY_AUTO_DISCOVERY = 'false'
 # 走国内镜像，否则下载 electron 与 nsis 二进制会挂很久。
 $env:ELECTRON_BUILDER_BINARIES_MIRROR = 'https://npmmirror.com/mirrors/electron-builder-binaries/'
 $env:ELECTRON_MIRROR = 'https://npmmirror.com/mirrors/electron/'
-# VPN 在 65535。
-$env:HTTP_PROXY = 'http://127.0.0.1:65535'
-$env:HTTPS_PROXY = 'http://127.0.0.1:65535'
+# VPN 在 65535。但 VPN 不是永远在线（实测断线时 electron-builder 会
+# connect ECONNREFUSED 127.0.0.1:65535 直接失败）—— 探测端口，通才走代理，
+# 不通走直连（npmmirror 国内直连可达；GitHub 直连这台机器也通）。
+$proxy = 'http://127.0.0.1:65535'
+$portOpen = Test-NetConnection -ComputerName 127.0.0.1 -Port 65535 -InformationLevel Quiet -WarningAction SilentlyContinue
+if ($portOpen) {
+  $env:HTTP_PROXY = $proxy
+  $env:HTTPS_PROXY = $proxy
+  Write-Host '代理：127.0.0.1:65535 在线，走代理'
+} else {
+  Remove-Item Env:HTTP_PROXY -ErrorAction SilentlyContinue
+  Remove-Item Env:HTTPS_PROXY -ErrorAction SilentlyContinue
+  Write-Host '代理：127.0.0.1:65535 不在线，走直连'
+}
 # 关键：DSH 环境里这个变量是 1，子进程继承后 electron 会退化成用 Node 跑。
 Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
 
