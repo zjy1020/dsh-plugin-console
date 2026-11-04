@@ -385,3 +385,20 @@ export function describeRemote(coords: RemoteCoords): string | null {
 export function clearRemoteCache(): void {
   gitPathCache = undefined
 }
+/**
+ * 从 spec 里直接读出仓库地址（`rec.remoteGitUrl` 为空时的兜底）。
+ *
+ * 什么时候会用到：从 GitHub 装的包，node_modules 里的 package.json 既没写
+ * `dsh.install.git` 也没写 `repository` —— 元数据干净得很，但 spec 本身
+ * （`github:owner/repo#v1.2.3`）就是坐标。不兜这一下，这类包的更新按钮永远出不来。
+ */
+export function gitUrlFromSpec(spec: string): string | null {
+  const raw = String(spec || '').trim()
+  if (raw === '') return null
+  const bare = (raw.split('#')[0] ?? '').trim()
+  if (bare === '') return null
+  if (/^github:/i.test(bare) || /^(git\+|git:|https?:|ssh:|git@)/i.test(bare)) {
+    return normalizeGitUrl(bare)
+  }
+  return null
+}

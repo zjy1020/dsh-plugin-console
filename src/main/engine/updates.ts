@@ -11,7 +11,7 @@
 import type { PluginRecord, SourceKind, UpdateCheckProgress, UpdateKind } from '../../shared/types'
 import { listPlugins } from './inventory'
 import { registryPackument } from './net'
-import { latestGitTag } from './remote'
+import { gitUrlFromSpec, latestGitTag } from './remote'
 import { get as getSettings } from './settings'
 import { classifySpec } from './spec'
 
@@ -225,16 +225,67 @@ async function checkOne(rec: PluginRecord): Promise<CheckOutcome> {
       }
     }
 
-    /* ---------------- git：只能看 ref，没法比版本 ---------------- */
+    /* ---------------- git：钉了 commit 就不动，否则按远端 tag 比 ---------------- */
+    /*
+     * 以前这里无论什么 git 来源都回 updateAvailable=false（只有钉死 commit 时多一句说明）。
+     * 结果是从 GitHub 装的插件装完就永远显示「—」，用户明明是从 GitHub 装的却再也收不到新版提示；
+     * 而「本地 tarball 更新成 GitHub 标签」之后也会落到这个分支，不修就等于把问题挪了个位置。
+     *
+     * 现在：spec 钉了 40 位 commit → 不动；否则问远端最大正式 tag，比出有无新版。
+     */
     case 'git': {
-      const pinned = SHA40.test(rec.spec ?? '')
+      const specText = rec.spec ?? ''
+      if (SHA40.test(specText)) {
+        return {
+          result: 'skipped',
+          record: patchRecord(rec, {
+            latestVersion: null,
+            updateAvailable: false,
+            updateKind: 'git',
+            remoteSpec: null,
+            updateError: '已锁定 commit，不自动更新'
+          })
+        }
+      }
+
+      const url = rec.remoteGitUrl ?? gitUrlFromSpec(specText)
+      if (!url) {
+        return {
+          result: 'skipped',
+          record: patchRecord(rec, {
+            latestVersion: null,
+            updateAvailable: false,
+            updateKind: 'git',
+            remoteSpec: null,
+            updateError: '这个 git 来源看不出仓库地址，没法查远端版本'
+          })
+        }
+      }
+
+      const ask = await latestGitTag(url)
+      if (!ask.ok) {
+        return {
+          result: 'error',
+          record: patchRecord(rec, {
+            latestVersion: null,
+            updateAvailable: false,
+            updateKind: 'git',
+            remoteSpec: null,
+            updateError: ask.error
+          })
+        }
+      }
+
+      const latestGit = ask.latest.version
+      const installedGit = rec.version
       return {
-        result: pinned ? 'skipped' : 'ok',
+        result: 'ok',
         record: patchRecord(rec, {
-          latestVersion: null,
-          updateAvailable: false,
+          latestVersion: latestGit,
+          updateAvailable: installedGit ? compareVersions(latestGit, installedGit) > 0 : true,
           updateKind: 'git',
-          updateError: pinned ? '已锁定 commit，不自动更新' : null
+          remoteSpec: ask.latest.spec,
+          updateError: null
         })
       }
     }
