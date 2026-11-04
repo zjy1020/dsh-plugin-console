@@ -146,6 +146,20 @@ export function PluginDetail() {
           <Row k="spec">
             <span className="mono detail__spec selectable">{orDash(rec.spec)}</span>
           </Row>
+          {/*
+            * 本地来源（下载下来的 tarball / 源码目录）界面上一眼看不出它其实来自 GitHub ——
+            * 这一行把包里声明的远程出处摆出来。npm / git / tarball 来源不显示：
+            * 它们的 spec 本身就是远程坐标，再列一遍是噪音。
+            */}
+          {rec.remoteGitUrl &&
+          (rec.sourceKind === 'file' || rec.sourceKind === 'link' || rec.sourceKind === 'workspace') ? (
+            <Row k="远程出处">
+              <span className="mono detail__spec selectable">{rec.remoteGitUrl}</span>
+              <span className="detail__aside dim">
+                {rec.sourceKind === 'file' ? '检查更新时按这里的标签比版本' : '你现在装的是本地目录，不是这个远端'}
+              </span>
+            </Row>
+          ) : null}
           <Row k="homepage">
             <Link url={rec.homepage} />
           </Row>

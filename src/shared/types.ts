@@ -156,6 +156,23 @@ export interface PluginRecord {
   installedAt: number | null
   /** 安装位置绝对路径 */
   path: string | null
+
+  /**
+   * 本地来源（file / link / workspace）的包，如果它在自己的 package.json 里
+   * 声明了远程出处（dsh.install.git / repository.url / GitHub 首页），
+   * 这里记下归一化后的 git 地址 —— 有它才能查远端标签、给出更新按钮。
+   * 其它来源一律 null（它们本来就按自己的 spec 走）。
+   */
+  remoteGitUrl: string | null
+  /** 远程坐标是从哪个字段读到的（dsh.install.git / repository / homepage），给界面写说明用 */
+  remoteFrom: string | null
+  /**
+   * 更新时真正要装的 spec。绝大多数情况与 `spec` 相同；
+   * 只有当本地 tarball 追到了远程 tag 时，这里才是 `github:owner/repo#vX.Y.Z` ——
+   * 也就是说「更新」会把 spec 从 `file:` 改写成远程坐标（这正是用户要的：
+   * 不再被一个下载下来的本地 tgz 绑死）。
+   */
+  remoteSpec: string | null
 }
 
 /* ------------------------------------------------------------------ *
@@ -278,6 +295,15 @@ export interface OpRequest {
    * 缺省/某个包没给 → 主进程退回用清单里的 latestVersion，最后才用 @latest。
    */
   versions?: Record<string, string>
+  /**
+   * 包名 → 该包更新时要用哪个 spec（目前只有「本地 tarball 追到了远程 tag」这一种情况要传：
+   * `github:owner/repo#v1.6.70`）。
+   *
+   * 为什么要渲染层传：这条 spec 是「检查更新」那一刻问远端问出来的，只活在渲染层的
+   * 更新结论快照里；主进程重读磁盘时 PluginRecord.remoteSpec 是 null（那要联网才知道）。
+   * 不传也不致命 —— 主进程会自己再问一次远端，只是多花几秒、且结果可能比界面上新一档。
+   */
+  specs?: Record<string, string>
   /** install 时的 spec（原始输入或已归一化 spec） */
   spec?: string
 }

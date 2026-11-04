@@ -20,6 +20,7 @@ import { classifySpec, specVersionOf } from './spec'
 import { getDshHome, getProfileDir } from './env'
 import { readConsoleState } from './state'
 import { readPatchDisabledIds } from './patch'
+import { normalizeGitUrl } from './remote'
 
 /* ------------------------------------------------------------------ *
  * 基础 IO
@@ -294,6 +295,23 @@ function buildRecord(args: {
 
   const sizeBytes = deep && installed ? dirSize(dir) : null
 
+  /*
+   * 远程出处：顺手从已经读出来的 package.json 里摸一下，零额外 IO。
+   *
+   * 为什么这里就要算：本地 tarball（`file:C:/…/x-1.6.69.tgz`）装的包在界面上
+   * 跟「真的本地文件」长得一模一样，用户看不出它其实来自 GitHub。
+   * 有 remoteGitUrl 之后，详情面板能写明出处，更新检查也能顺着它查远端标签。
+   *
+   * 优先级：dsh.install.git > repository > homepage（作者主动声明的安装坐标优先于通用元数据）。
+   */
+  const installDecl = isPlainObject(dsh.install) ? (dsh.install as Record<string, any>) : {}
+  const installGit = normalizeGitUrl(asStringOrNull(installDecl.git))
+  const repoGit = normalizeGitUrl(normalizeRepository(pkg?.repository))
+  const home = asStringOrNull(pkg?.homepage)
+  const homeGit = home && /github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+/i.test(home) ? normalizeGitUrl(home) : null
+  const remoteGitUrl = installGit ?? repoGit ?? homeGit
+  const remoteFrom = installGit ? 'dsh.install.git' : repoGit ? 'repository' : homeGit ? 'homepage' : null
+
   return {
     id: `${profile}::${name}`,
     profile,
@@ -331,7 +349,11 @@ function buildRecord(args: {
     depsCount: isPlainObject(pkg?.dependencies) ? Object.keys(pkg?.dependencies as object).length : 0,
     sizeBytes,
     installedAt,
-    path: installed ? dir : null
+    path: installed ? dir : null,
+
+    remoteGitUrl,
+    remoteFrom,
+    remoteSpec: null
   }
 }
 

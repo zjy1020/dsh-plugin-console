@@ -36,6 +36,7 @@ import * as profileYaml from './profileYaml'
 import * as updates from './updates'
 import * as manifest from './manifest'
 import { compareVersions } from './updates'
+import { latestGitTag } from './remote'
 import { addBundle, backupProfilePkg, bundleIndexOf, getBundles, readProfilePkg, removeBundle } from './bundles'
 
 /* ------------------------------------------------------------------ *
@@ -1256,6 +1257,26 @@ function readPinnedVersions(raw: OpRequest['versions']): Map<string, string> {
   return out
 }
 
+/**
+ * 渲染层传来的「包名 → 更新时要用的 spec」。
+ *
+ * 目前只有一种来源：本地 tarball 的包在检查更新时追到了远程 tag，
+ * 渲染层手上握着 `github:owner/repo#v1.6.70` 这个确定的坐标，就把它带下来。
+ * 校验只做最基本的形状检查 —— 带换行或空格的东西拼进 pnpm 参数一定是乱的。
+ */
+function readPinnedSpecs(raw: OpRequest['specs']): Map<string, string> {
+  const out = new Map<string, string>()
+  if (!raw || typeof raw !== 'object') return out
+  for (const [name, spec] of Object.entries(raw)) {
+    if (typeof name !== 'string' || name.trim() === '') continue
+    if (typeof spec !== 'string') continue
+    const value = spec.trim()
+    if (value === '' || /[\s\r\n]/.test(value)) continue
+    out.set(name, value)
+  }
+  return out
+}
+
 async function opUpdate(
   ctx: Ctx,
   hooks: OpHooks | undefined,
@@ -1267,6 +1288,8 @@ async function opUpdate(
 
   /** 界面「最新版本」那一列写的是什么，就钉什么 */
   const pinned = readPinnedVersions(req.versions)
+  /** 界面握着的远端 spec（本地 tarball 追到 tag 时才有） */
+  const specPins = readPinnedSpecs(req.specs)
 
   const explicit = (Array.isArray(req.targets) ? req.targets : []).filter(
     (t) => typeof t === 'string' && t !== ''
@@ -1365,7 +1388,26 @@ async function opUpdate(
      * git / tarball → 重新解析同一个 spec。
      */
     const pin = pinned.get(name) ?? rec.latestVersion ?? null
-    installArgs.push(rec.sourceKind === 'npm' ? `${name}@${pin ?? 'latest'}` : rec.spec)
+    /*
+     * file（本地 tarball）如果追到了远程坐标，用远端 spec 而不是原来的 `file:` ——
+     * 这一改就是把「一个下载下来的 tgz」换成「GitHub 上某个 tag」，
+     * 下次检查更新才查得到东西。
+     *
+     * 三档：渲染层带下来的确定坐标 > 检查更新时存在记录里的 > 现在自己问一次远端。
+     * 最后一档是为「界面没传」准备的兜底 —— 多花几秒，但不会把 file: 原样重装一遍。
+     */
+    let specFor = specPins.get(name) ?? rec.remoteSpec ?? rec.spec
+    if (!specPins.has(name) && !rec.remoteSpec && rec.remoteGitUrl && rec.sourceKind === 'file') {
+      logSystem(ctx, hooks, `${name} 是本地 tarball，先问一次远端最新标签…`)
+      const ask = await latestGitTag(rec.remoteGitUrl)
+      if (ask.ok) {
+        specFor = ask.latest.spec
+        logSystem(ctx, hooks, `  → 改从 ${ask.latest.spec} 更新（原来是本地文件）`)
+      } else {
+        logSystem(ctx, hooks, `  → 读不到远端标签（${ask.error}），仍按原 spec 重装`)
+      }
+    }
+    installArgs.push(rec.sourceKind === 'npm' ? `${name}@${pin ?? 'latest'}` : specFor)
     touched.push(name)
     if (rec.sourceKind === 'npm' && pin) wanted.set(name, pin)
   }

@@ -202,6 +202,12 @@ export interface UpdateSnapshot {
   updateAvailable: boolean
   updateKind: UpdateKind
   updateError: string | null
+  /**
+   * 本地 tarball 追到远程 tag 时，更新要用哪个 spec（`github:owner/repo#v1.6.70`）。
+   * 为什么必须一起存：主进程重读磁盘时不知道这件事（那要联网），
+   * 执行更新时不把它带下去，file: 的老 spec 会被原样重装一遍 —— 看起来点了没反应。
+   */
+  remoteSpec: string | null
   checkedAt: number
 }
 
@@ -365,6 +371,7 @@ function snapshotOf(rec: PluginRecord): UpdateSnapshot | null {
     updateAvailable: rec.updateAvailable,
     updateKind: rec.updateKind,
     updateError: rec.updateError,
+    remoteSpec: rec.remoteSpec,
     checkedAt: rec.checkedAt
   }
 }
@@ -377,6 +384,7 @@ function withSnapshot(rec: PluginRecord, snap: UpdateSnapshot): PluginRecord {
     updateAvailable: snap.updateAvailable,
     updateKind: snap.updateKind,
     updateError: snap.updateError,
+    remoteSpec: snap.remoteSpec ?? rec.remoteSpec,
     checkedAt: snap.checkedAt
   }
 }
@@ -866,6 +874,21 @@ function updateVersions(list: PluginRecord[]): Record<string, string> {
   return out
 }
 
+/**
+ * 目标 → 更新时要用的 spec（一起发给主进程的 `specs`）。
+ *
+ * 只有「本地 tarball 追到了远程 tag」这一类包会有值：它们原来在 profile 里是
+ * `file:C:/…/x-1.6.69.tgz`，主进程重读磁盘时并不知道远端坐标（那要联网才知道），
+ * 不把 `github:owner/repo#v1.6.70` 带下去，就等于让 pnpm 把同一个本地文件再装一遍。
+ */
+function updateSpecs(list: PluginRecord[]): Record<string, string> | undefined {
+  const out: Record<string, string> = {}
+  for (const p of list) {
+    if (typeof p.remoteSpec === 'string' && p.remoteSpec !== '') out[p.name] = p.remoteSpec
+  }
+  return Object.keys(out).length > 0 ? out : undefined
+}
+
 /* ------------------------------------------------------------------ *
  * Actions
  * ------------------------------------------------------------------ */
@@ -1326,7 +1349,17 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
       requestConfirm({
         title: `更新 ${rec.name}？`,
         message: `${rec.version ?? '（当前版本未知）'} → ${rec.latestVersion ?? '（远端版本未知）'}`,
-        notes: ['会修改 profile 的 package.json，装完需要重启 DSH 才会加载新版本。'],
+        notes: [
+          '会修改 profile 的 package.json，装完需要重启 DSH 才会加载新版本。',
+          /*
+           * 本地 tarball 追到远程的包，更新会顺手把 spec 从 `file:` 改写成 GitHub 坐标 ——
+           * 这是用户看得见的行为变化（以后再装就不依赖那个下载下来的 tgz 了），
+           * 弹窗里必须先说明白，不能等他看到 package.json 才发现。
+           */
+          ...(rec.remoteSpec
+            ? [`这个包现在装的是本地 tarball，更新后会改成从 ${rec.remoteSpec} 装，以后检查更新就能直接比远端标签。`]
+            : [])
+        ],
         kv: [
           { key: '装到', value: rec.profile, mono: true },
           { key: '会修改', value: `${rec.profile}/package.json 与 pnpm-lock.yaml`, mono: true }
@@ -1339,7 +1372,8 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
               profile: rec.profile,
               targets: [rec.name],
               /* 同上：钉到这一行「→ x.y.z」写着的那个版本，别让主进程再猜一次 */
-              versions: rec.latestVersion ? { [rec.name]: rec.latestVersion } : undefined
+              versions: rec.latestVersion ? { [rec.name]: rec.latestVersion } : undefined,
+              specs: updateSpecs([rec])
             },
             `更新 ${rec.name}`
           )
@@ -1374,7 +1408,7 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
       requireText: '更新',
       onConfirm: () =>
         void runOp(
-          { kind: 'update-all', profile, targets, versions: updateVersions(list) },
+          { kind: 'update-all', profile, targets, versions: updateVersions(list), specs: updateSpecs(list) },
           `更新全部（${count} 个）`
         )
     })
@@ -1412,7 +1446,7 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
       requireText: '更新',
       onConfirm: () =>
         void runOp(
-          { kind: 'update-all', profile, targets, versions: updateVersions(list) },
+          { kind: 'update-all', profile, targets, versions: updateVersions(list), specs: updateSpecs(list) },
           `更新选中（${count} 个）`
         )
     })

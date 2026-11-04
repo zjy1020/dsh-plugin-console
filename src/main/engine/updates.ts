@@ -11,6 +11,7 @@
 import type { PluginRecord, SourceKind, UpdateCheckProgress, UpdateKind } from '../../shared/types'
 import { listPlugins } from './inventory'
 import { registryPackument } from './net'
+import { latestGitTag } from './remote'
 import { get as getSettings } from './settings'
 import { classifySpec } from './spec'
 
@@ -250,7 +251,62 @@ async function checkOne(rec: PluginRecord): Promise<CheckOutcome> {
         })
       }
 
-    /* ---------------- 本地 link：重新 link 一下就行 ---------------- */
+    /* ---------------- file：本地 tarball —— 能追到远程就给更新 ---------------- */
+    /*
+     * 这是用户实测踩到的那一类：从 GitHub 装的插件，profile 里落的却是
+     * `file:C:/…/pkgs/<sha>/x-1.6.69.tgz`。原来这里一律 updateAvailable=false，
+     * 界面上既没按钮也没解释，用户只能看着一个 `FILE` 徽章发愣。
+     *
+     * 现在：包自己的 package.json 里若声明了远程出处（dsh.install.git / repository /
+     * GitHub 首页），就顺着它问远端最新 tag —— 查得到就有更新按钮，查不到也把原因说出来。
+     *
+     * link / workspace 不走这条路：那两个是用户自己的源码目录，本地就是最新，
+     * 拿远端 tag 去标「可更新」会把正在开发的东西指回旧发布版。
+     */
+    case 'file': {
+      const remote = rec.remoteGitUrl
+      if (!remote || !rec.installed) {
+        return {
+          result: 'skipped',
+          record: patchRecord(rec, {
+            latestVersion: null,
+            updateAvailable: false,
+            updateKind: 'none' as UpdateKind,
+            remoteSpec: null,
+            updateError: null
+          })
+        }
+      }
+
+      const ask = await latestGitTag(remote)
+      if (!ask.ok) {
+        return {
+          result: 'error',
+          record: patchRecord(rec, {
+            latestVersion: null,
+            updateAvailable: false,
+            updateKind: 'git',
+            remoteSpec: null,
+            updateError: ask.error
+          })
+        }
+      }
+
+      const latest = ask.latest.version
+      const installed = rec.version
+      return {
+        result: 'ok',
+        record: patchRecord(rec, {
+          latestVersion: latest,
+          updateAvailable: installed ? compareVersions(latest, installed) > 0 : true,
+          updateKind: 'git',
+          remoteSpec: ask.latest.spec,
+          updateError: null
+        })
+      }
+    }
+
+    /* ---------------- link：重新 link 一下就行 ---------------- */
     case 'link':
       return {
         result: 'skipped',
@@ -262,8 +318,7 @@ async function checkOne(rec: PluginRecord): Promise<CheckOutcome> {
         })
       }
 
-    /* ---------------- file / workspace / unknown：不管 ---------------- */
-    case 'file':
+    /* ---------------- workspace / unknown：不管 ---------------- */
     case 'workspace':
     case 'unknown':
     default:
