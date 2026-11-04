@@ -475,3 +475,28 @@ if (pid === process.pid) continue
 2. **「谁退出的」这个问题必须能靠日志回答，不能靠猜**。自己退的留全轨迹，被杀的半路断掉，断点就是死点。写日志要用同步写。
 3. **用户描述的时序常常是错的**（「点保存就退出」）。第二刀强杀在点击后 2~3.5 秒才落，这 2 秒足够让用户把因果安到中间那次点击上。**先把时序的可能窗口算出来，再对用户的叙述做归因。**
 4. **开发期的启动方式会污染判断**：从 DSH 的 shell 里起插件台，等于给自己加了一个有生命周期的祖先。凡是「进程关系相关」的验证，都要先把自己从那个树里摘出来再测。
+
+---
+
+## 任务栏图标一直是 Electron 默认原子图 —— 根因是 explorer 的图标缓存，不是代码
+
+**现象**：打包版装好后，任务栏按钮显示的是 Electron 默认的原子图标，而 exe 内嵌图标、窗口图标都是我们的 logo。Master 从 v0.1.0 一路升到 v0.1.3 都没变过。
+
+**取证顺序（每一步都排除了一个可能）**：
+
+1. `ExtractAssociatedIcon` 掏 `D:\Dowloads\DSH插件台\DSH 插件台\DSHPluginConsole.exe` → **粉发 + 蓝鲸，正确**。exe 内嵌图标没问题。
+2. `SendMessage(hwnd, WM_GETICON, ICON_BIG / ICON_SMALL / ICON_SMALL2)` 三个通道全部取回 48×48 / 24×24 的 **logo 本身** → 窗口图标也设上了，`resolveWindowIcon()` + `ready-to-show` 的 `setIcon` 都在正常工作。
+3. `resources\resources\icon.ico` 195383 B 在位 → 路径没问题。
+4. 三条都排掉之后只剩一个变量：**explorer 侧**。`Stop-Process explorer` → 4 秒后系统自动拉起 → 图标立刻变对。
+
+**结论**：Windows 的任务栏按钮图标**不是每次都重新问窗口**，它按 AppUserModelID 缓存一份在 `%LocalAppData%\Microsoft\Windows\Explorer\iconcache_*.db` 里。我们开发期用 `node_modules\electron\dist\electron.exe` 起同样的 AUMID（`com.yg.dsh-plugin-console`），那一刻缓存进去的是 **electron.exe 的原子图标**；之后换成真 exe、窗口图标再怎么设，缓存命中就还是原子。
+
+**为什么这事只坑开发者的机器**：干净的机器第一次装上去没有旧缓存，直接就显示正确的 logo。只有「先跑过 dev 实例、再装打包版」的机器会中招 —— 也就是我们自己的机器。
+
+**以后遇到同款（图标换了但任务栏没变），不要改代码，先按这个顺序验**：
+
+1. `ExtractAssociatedIcon(exe)` —— exe 里到底是什么
+2. `WM_GETICON` 三个通道 —— 窗口设上的是什么
+3. 两者都对我们自己的图 → 一定是缓存，跑 `scripts\fix-icon-cache.ps1`
+
+**教训**：**图标链路上有三个不同的宿主（exe 资源 / 窗口 HICON / explorer 缓存），排查必须逐个取证，不能因为「我改了 setIcon」就认定问题在代码里。** 这次差点去改 `setIcon` 的调用时机 —— 那个改动是对的但不解决这个问题，会白改一轮再打包。
