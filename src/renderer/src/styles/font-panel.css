@@ -1,0 +1,337 @@
+/* DSH 字体面板（FontPanel）的样式
+ *
+ * 两条规矩，和 appearance-settings.css 保持一致：
+ * 1. 这一页自己的容器一律不画玻璃 —— 设置面板本身就已经是玻璃面板，再套一层透明会变成
+ *    「玻璃里的玻璃」，文字对比度也会掉。控件只用衬底（--gl-bed-*）和细边。
+ * 2. 只引用 tokens.css 里的变量，不写死颜色 / 时长 / 圆角。
+ *
+ * .settings__group 与 .section-title 由全局的 components.css 提供，这里不重复定义。
+ */
+
+/* 这一页和 .install 一样是**整页视图**，所以内边距、滚动、撑满宽度的账都得自己认领：
+ * `.app__view` 本身是 0 padding 的 flex 容器（padding 由各个视图自己带，见 components.css
+ * 的 .install / .logdrawer）。第一版漏了这三条，结果面板既不撑满（宽度停在内容宽度 795px）、
+ * 又贴着侧边栏零间距 —— 用户原话「字体面板太靠左」。
+ * 横向 16px 是为了和上面 subbar 的 tab 左右对齐。 */
+.fp {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-5) var(--sp-4) var(--sp-6);
+}
+
+.fp__lead {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--fg-1);
+  line-height: 1.6;
+}
+
+.fp__lead b {
+  color: var(--fg-0);
+  font-weight: 600;
+}
+
+/* 补丁文件路径要能一眼看清、能选中复制 */
+.fp__path {
+  display: block;
+  margin: var(--sp-2) 0;
+  padding: var(--sp-2h) var(--sp-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm);
+  background: var(--bg-sunken);
+  color: var(--fg-0);
+  font-size: var(--fs-xs);
+  word-break: break-all;
+  user-select: text;
+}
+
+.fp__meta {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  font-size: var(--fs-caption);
+}
+
+/* 提示条：左侧一道竖线，不抢眼但看得见 */
+.fp__banner {
+  padding: var(--sp-2h) var(--sp-3);
+  border: 1px solid var(--gl-panel-edge);
+  border-left: 2px solid var(--p-brand);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--gl-bed-color) 55%, transparent);
+  font-size: var(--fs-caption);
+  color: var(--fg-1);
+  line-height: 1.6;
+}
+
+.fp__banner--warn {
+  border-left-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  color: var(--fg-0);
+}
+
+.fp__banner b {
+  color: var(--fg-0);
+}
+
+/* ------------------------------- 三行角色 ------------------------------- */
+
+.fp__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-2h) 0;
+  min-height: 30px;
+}
+
+.fp__row + .fp__row {
+  border-top: 1px solid var(--border-soft);
+}
+
+.fp__rowlabel {
+  flex: 0 0 108px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-hair);
+  font-size: var(--fs-sm);
+  color: var(--fg-0);
+  padding-top: var(--sp-hair);
+}
+
+.fp__hint {
+  font-size: var(--fs-xxs);
+  color: var(--fg-2);
+  line-height: 1.4;
+}
+
+.fp__rowside {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.fp__state {
+  font-size: var(--fs-xxs);
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+
+/* ------------------------------ 写入预览 ------------------------------ */
+
+.fp__preview {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-hair);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--fg-0);
+  line-height: 1.7;
+  user-select: text;
+}
+
+.fp__preview li.muted {
+  color: var(--fg-2);
+  font-family: var(--font-ui);
+}
+
+.fp__actions {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin-top: var(--sp-2h);
+}
+
+.fp__foot {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-xxs);
+  color: var(--fg-2);
+  line-height: 1.6;
+}
+
+.fp__note {
+  padding: var(--sp-2h) var(--sp-3);
+  border-left: 2px solid var(--p-brand);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: color-mix(in srgb, var(--gl-bed-color) 45%, transparent);
+  font-size: var(--fs-caption);
+  color: var(--fg-1);
+  line-height: 1.5;
+  user-select: text;
+}
+
+.fp__note--warn {
+  border-left-color: var(--danger);
+  color: var(--fg-0);
+}
+
+/* --------------------------- 可搜索字体选择器 --------------------------- */
+
+.fpick {
+  position: relative;
+  flex: 0 1 320px;
+  min-width: 200px;
+}
+
+.fpick__trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2h);
+  min-height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--bg-1);
+  color: var(--fg-0);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--t-2) var(--e-standard), background var(--t-2) var(--e-standard);
+}
+
+.fpick__trigger:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--bg-hover);
+}
+
+.fpick__trigger.is-open {
+  border-color: var(--border-focus);
+  background: var(--bg-2);
+}
+
+.fpick__trigger:disabled {
+  color: var(--fg-3);
+  cursor: default;
+}
+
+.fpick__value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fpick__value--empty {
+  color: var(--fg-2);
+}
+
+.fpick__caret {
+  flex: 0 0 auto;
+  font-size: var(--fs-xxs);
+  color: var(--fg-2);
+}
+
+/* 下拉：这里也不能用 backdrop-filter —— 它盖在玻璃面板上，再糊一层会发灰
+   要压住下面的正文，用不透明底色 + 阴影就够 */
+.fpick__pop {
+  position: absolute;
+  z-index: var(--z-sticky);
+  top: calc(100% + var(--sp-hair));
+  left: 0;
+  width: min(420px, 86vw);
+  padding: var(--sp-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--bg-2);
+  box-shadow: var(--shadow-2);
+}
+
+.fpick__search {
+  width: 100%;
+}
+
+.fpick__quick {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.fpick__quickbtn {
+  padding: var(--sp-hair) var(--sp-2);
+  border: 1px solid var(--gl-panel-edge);
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--p-brand) 10%, transparent);
+  color: var(--fg-0);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xxs);
+  cursor: pointer;
+  transition: background var(--t-2) var(--e-standard);
+}
+
+.fpick__quickbtn:hover {
+  background: color-mix(in srgb, var(--p-brand) 18%, transparent);
+}
+
+.fpick__list {
+  max-height: 232px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm);
+  background: var(--bg-sunken);
+}
+
+.fpick__item {
+  padding: var(--sp-1) var(--sp-2h);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--fg-1);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--t-1) var(--e-standard), color var(--t-1) var(--e-standard);
+}
+
+.fpick__item:hover {
+  background: var(--bg-hover);
+  color: var(--fg-0);
+}
+
+.fpick__item.is-on {
+  background: color-mix(in srgb, var(--p-brand) 16%, transparent);
+  color: var(--fg-0);
+}
+
+.fpick__itemname {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fpick__empty {
+  padding: var(--sp-2h);
+  font-size: var(--fs-xs);
+}
+
+.fpick__count {
+  font-size: var(--fs-xxs);
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fpick__trigger,
+  .fpick__quickbtn,
+  .fpick__item {
+    transition: none;
+  }
+}

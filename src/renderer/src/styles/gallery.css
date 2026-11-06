@@ -2,7 +2,8 @@
  * gallery.css —— 插件详情里「图片」区的样式。
  *
  * 约束：只用 tokens.css 里的 CSS 变量（不写死颜色）、选择器全部是类（零 element 选择器）、
- * 类名前缀统一 gal- / gal__ / gal-preview*。面板是窄栏（约 400px），一切按窄栏设计。
+ * 类名前缀统一 gal- / gal__ / gal-preview*。图集本体在窄栏（约 400px）里排版，
+ * **唯一例外是 .gal-preview**：那是整窗灯箱（下面单独说明），不按窄栏算。
  */
 
 /* ---------------- 外壳 ---------------- */
@@ -248,12 +249,34 @@
   text-align: left;
 }
 
-/* ---------------- 预览层（严格盖在详情面板上） ---------------- */
+/* ---------------- 预览层（整窗灯箱） ---------------- */
 
+/* 为什么改回整窗灯箱（原来那版是「严格盖在详情面板上」）：
+ *
+ * 原来是「量宿主面板的矩形，再把这四个数当内联坐标写到 fixed 层上」。它有三个问题，
+ * 前两个是设计问题、第三个是致命的：
+ *
+ *   1. 量的是 `closest('.detail')`。市场 tab 的详情外壳不是 .detail（它用的是
+ *      MarketTab 自己的 .mkt__overlay / .mkt__sheet），于是 closest 落空、退化成量
+ *      .gal 自己那一小块 —— 实测预览层只有 653x243，图被压成 173x97。
+ *   2. 就算量准了也没意义：详情栏约 400px 宽、市场 sheet 上限 720px 宽，
+ *      1440x810 的截图放进去仍然是缩略图大小。图集是看图的，放大必须比原位置大得多，
+ *      否则「点开」这个动作本身没有收益。
+ *   3. position:fixed 的包含块会被带 backdrop-filter / transform 的祖先抢走，
+ *      而市场挂在 .app__main.shell-main 里（glass.css:1287 的 backdrop-filter +
+ *      1290 的 overflow:hidden）。所以组件那边把这一层 portal 到了 document.body，
+ *      这里的 inset:0 才真的等于整窗。
+ *
+ * 现在这块不再需要任何「覆盖内联坐标」的 !important 补丁，也不再依赖宿主是什么类名：
+ * 灯箱只认窗口，读图控件（计数 / 上一张 / 下一张 / 关闭）随宽高自适应。 */
 .gal-preview {
   position: fixed;
+  inset: 0;
   z-index: var(--z-drawer);
   display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4vh 4vw;
   background: var(--scrim);
   animation: gal-fade var(--dur-base) var(--ease-out);
 }
@@ -262,37 +285,19 @@
   outline: none;
 }
 
-/* ⚠ 详情面板改造后必须跟的一条：预览层的坐标基准变了。
- *
- * 组件里这一层是 position:fixed，left/top/width/height 是内联写的绝对值 ——
- * PluginGallery.tsx:102-105 拿 `rootRef.closest('.detail').getBoundingClientRect()`
- * 量出来的是**视口坐标**（x≈920），然后当内联样式直接写上去。
- *
- * 面板以前是透明板，身上没有任何会建「包含块」的属性，fixed 就真的相对视口，
- * 这组坐标成立。现在 glass.css 给 `.app__body > .detail` 加了 backdrop-filter
- * （以及 overflow:hidden、16px 圆角），而 backdrop-filter 的父元素会成为
- * position:fixed 后代的**包含块** —— 于是那份视口坐标被当成「面板内部的偏移」，
- * 预览层整体再往右下平移 (920, 29)，同时被面板的 overflow:hidden 当场裁掉，
- * 点缩略图会什么都不出来（或者只露一个角）。
- *
- * 修法不去动组件（它不属于本次范围，而且量视口的逻辑在别的调用点仍然是必要的）：
- * 在这里用 inset:0 把它按回「铺满最近的 filtered 祖先」，再用 !important
- * 压掉那四个内联值（内联样式没有 !important，样式表里的 !important 赢）。
- * 结果：预览层严格等于面板内框，也是一块圆角悬浮层，正好配合新外观。
- * 只针对 .detail 作用域 —— 图集若被放进 marketplace 标签页，那条路径不受影响。 */
-.detail .gal-preview {
-  inset: 0 !important;
-  width: auto !important;
-  height: auto !important;
-}
-
+/* 灯箱里的那张卡：占满可用空间但留上限。
+   1680px 是「再宽也不会更清楚」的位置 —— 常见 README 截图在 1440–1600 宽，
+   外面再包 4vw 的呼吸边距，1920 窗口下 1440x810 的图能铺到约 1540x870，
+   这就是用户抱怨的核心（原来只有 173x97）。 */
 .gal-preview__box {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  max-width: 1680px;
   min-width: 0;
   min-height: 0;
-  margin: var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--bg-1);
@@ -342,17 +347,21 @@
   overflow: hidden;
 }
 
+/* 图片按 contain 铺满舞台：1440x810 的截图会把整窗铺满，180x180 的小图也会被放大
+   ——放大倍数由组件按图片天然尺寸算 inline 的 max-width/max-height 卡住（见 UPSCALE_MAX），
+   这里只管「元素盒子占满、图片在盒子里 contain 居中」。 */
 .gal-preview__img {
   display: block;
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   border-radius: var(--radius-xs);
 }
 
 .gal-preview__caption {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
   flex: 0 0 auto;
   padding: 0 var(--space-3) var(--space-2);
   max-height: 4.5em;
@@ -361,6 +370,14 @@
   font-size: var(--fs-xs);
   line-height: 1.5;
   word-break: break-word;
+}
+
+/* 尺寸用等宽 + 弱一档：它是「这张图到底多大」的读数，不该和说明文字抢注意力 */
+.gal-preview__dims {
+  flex: 0 0 auto;
+  color: var(--fg-3);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--fs-xxs);
 }
 
 .gal-preview__hint {

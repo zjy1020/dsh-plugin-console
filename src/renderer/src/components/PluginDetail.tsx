@@ -8,6 +8,7 @@
 import { useState, type ReactNode } from 'react'
 import type { PluginRecord, VersionOption } from '../../../shared/types'
 import { describeSource, describeUpdateKind, formatBytes, formatDateTime, formatRelativeTime, orDash } from '../lib/format'
+import { descFromCatalog, pluginDesc } from '../lib/desc'
 import { hasUpdateError, useConsole } from '../lib/store'
 import { PluginIcon } from './PluginIcon'
 import { PluginGallery } from './PluginGallery'
@@ -103,7 +104,19 @@ export function PluginDetail() {
           README 摘出来的简介能到十几行，放在滚动区外会把正文的可用高度挤成 0，
           而 .detail 是 overflow:hidden —— 挤掉就再也滚不到了。
         */}
-        {rec.description ? <p className="detail__desc">{rec.description}</p> : null}
+        {pluginDesc(rec) ? <p className="detail__desc">{pluginDesc(rec)}</p> : null}
+
+        {/*
+          中文简介是插件市场目录补的时候，把原始英文也留一行：
+          目录里的中文有时是 README 首段（尤其是「前置要求：…」这类），不是完整概述，
+          用户想核对作者原话时这里能对上；能读懂英文的用户也不至于被我们替掉。
+        */}
+        {descFromCatalog(rec) && rec.description ? (
+          <p className="detail__desc-src">
+            <span className="detail__desc-src-tag">原文（英文）</span>
+            {rec.description}
+          </p>
+        ) : null}
 
         <div className="detail__section">
           <div className="section-title">版本</div>

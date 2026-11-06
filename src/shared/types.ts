@@ -123,6 +123,13 @@ export interface PluginRecord {
   checkedAt: number | null
 
   description: string | null
+  /**
+   * 插件市场目录里的中文简介（catalogZh 那一层补的）。
+   * 只在目录已经抓到本地时才有值（首次运行 / 没进过市场页就是 null），
+   * 而且只覆盖「目录里有这一条」的包 —— 本地自己写的插件目录里没有，仍是 null。
+   * 界面上的用法是 `descZh ?? description`：有中文就用中文。
+   */
+  descZh: string | null
   homepage: string | null
   repository: string | null
   author: string | null
@@ -197,6 +204,8 @@ export interface SearchHit {
   name: string
   version: string
   description: string | null
+  /** 目录里的中文简介（npm 搜索接口只给英文）；目录里没有这个包就是 null */
+  descZh: string | null
   keywords: string[]
   publisher: string | null
   updatedAt: string | null
@@ -898,5 +907,100 @@ export interface ProvisionResult {
   files: number
   ms: number
   error: string | null
+}
+
+/* ------------------------------------------------------------------ *
+ * DSH 本体字体
+ *
+ * 这些是 `src/main/engine/fonts.ts` 里那几个接口的**字段镜像**，必须与那边保持一致
+ * （那边是权威实现）。要重写一遍的原因很实在：渲染进程的 tsconfig.web.json 只 include
+ * src/renderer、src/shared、src/preload/*.d.ts —— src/main 一个字符都不在里面，
+ * 面板组件拿不到那边的类型。
+ *
+ * 为什么改的是 profile 的 cordis.patch.yml 而不是注入 CSS：
+ * DSH 本体（dsh-client-ui-theme）自己就有 textFontFamily / codeFontFamily /
+ * terminalFontFamily 三个配置项，而且是 volatile 的（改完 hmr 热生效、不用重启）。
+ * 往别人的界面里塞 style 标签是插件没办法时的做法，我们做的是宿主工具，走配置正门。
+ * ------------------------------------------------------------------ */
+
+export type FontRole = 'text' | 'code' | 'terminal'
+
+/** 三个角色的当前值；空串 = 没设置 = 交给 DSH 内置字体栈 */
+export interface FontFamilyValues {
+  text: string
+  code: string
+  terminal: string
+}
+
+/** 单个键在补丁文件里的落点：present=false 表示文件里压根没有这一行 */
+export interface FontKeyState {
+  present: boolean
+  value: string
+  line: number | null
+}
+
+export interface SystemFontsResult {
+  fonts: string[]
+  source: 'registry' | 'fontdir' | 'none'
+  count: number
+  scannedAt: number
+  note: string
+}
+
+export interface FontsReadResult {
+  ok: boolean
+  error: string | null
+  /** 入参原样（profile 名或绝对路径） */
+  profile: string
+  profileDir: string
+  patchPath: string
+  patchExists: boolean
+  /** 补丁里有没有 `- id: ui-theme` 这一条 */
+  entryFound: boolean
+  /** 条目所在行号（1 起，找不到为 null） */
+  entryLine: number | null
+  /** 从 profile 补丁读到的值（'' = 没写） */
+  values: FontFamilyValues
+  /** 每个键的明细：UI 用它区分「没写」和「写了空串」 */
+  keys: Record<FontRole, FontKeyState>
+  /** 全 profile 补丁（~/.dsh/cordis.patch.yml）：它压住 profile 补丁，存在就得在 UI 上提示 */
+  homePatchPath: string
+  homePatchExists: boolean
+  homePatchEntryFound: boolean
+  homePatchValues: FontFamilyValues
+  /** home 补丁是否真的写了这三个键（都空不算） */
+  homePatchSetsFonts: boolean
+  /** 读的时候的 mtime，写的时候带上它做冲突检测 */
+  mtimeMs: number | null
+  note: string
+}
+
+/** 要写哪些键：缺省 = 不动；null 或空串 = 删掉这个键（回到 DSH 默认） */
+export interface FontsWriteInput {
+  text?: string | null
+  code?: string | null
+  terminal?: string | null
+}
+
+export interface FontsWriteResult {
+  ok: boolean
+  error: string | null
+  /** DSH 在我们动手前后改过这个文件，本次放弃写入 */
+  conflict: boolean
+  patchPath: string
+  backup: string | null
+  createdPatch: boolean
+  createdEntry: boolean
+  createdConfig: boolean
+  /** config 下最后一个键被删掉，顺手收掉了 config: 行 */
+  removedConfigLine: boolean
+  /** 实际改动的角色 */
+  changed: FontRole[]
+  /** 想改但没法改的（块标量、超长…） */
+  skipped: { role: FontRole; reason: string }[]
+  /** 写完后回读的真实值 */
+  values: FontFamilyValues
+  note: string
+  mtimeMs: number | null
 }
 

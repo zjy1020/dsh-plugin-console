@@ -330,6 +330,9 @@ function buildRecord(args: {
     checkedAt: null,
 
     description: asStringOrNull(pkg?.description),
+    // 中文简介由 catalogZh 那一层在 IPC 出口补（要读目录缓存，不能放在这里 ——
+    // 这个函数是纯读盘映射，别让它依赖「市场页有没有抓过目录」）
+    descZh: null,
     homepage: asStringOrNull(pkg?.homepage),
     repository: normalizeRepository(pkg?.repository),
     author: normalizeAuthor(pkg?.author),

@@ -12,6 +12,10 @@
  *     解析闸门（最多 4 个插件同时解析）与取字节闸门（最多 4 张图同时下载）。
  *  4. 只认 .png/.jpg/.jpeg/.webp/.gif（.svg 全是徽章，一律丢），单张 ≤ 1.5 MB，
  *     还要过 magic bytes 校验才算真图片。
+ *  5. 抽出来的候选再过一层「像不像截图」的筛子，三道：域名徽章表 → 文件名 / 路径的
+ *     装饰图关键词（sponsor / logo / banner …）→ 下载后按宽高比砍掉 4:1 长条。
+ *     同时在排序上把 screenshot / demo / preview 这类路径抬到前面。
+ *     三道筛子全灭时退回筛前的候选（宁可给徽章也别给空白），并在 warnings 里说明。
  *  5. 联网一律走 net（httpJson 会按设置里的 proxy 切 Electron session 代理）；
  *     与 icon.ts 一样，二进制 / 纯文本走 electronNet.fetch 并带一条 node:https 直连兜底。
  *
@@ -103,6 +107,76 @@ const BADGE_PATTERNS: RegExp[] = [
   /visitor/i,
   /metrics/i
 ]
+
+/**
+ * 装饰图关键词：**文件名 / 路径**命中任意一条就整张丢掉。
+ *
+ * 为什么还要一层关键词过滤，而不是只靠上面的域名表：README 顶部的赞助商位常常是自建 CDN
+ * 或仓库内文件（实测 @tt-a1i/archify-dsh 的 8 张「截图」里有 5 张是 `sponsors/*-logo.png`、
+ * `cdn.supercode.sh/sponsors/supercode-logo.png`），域名既不是 shields.io 也没带 badge 字样，
+ * 只看域名一个都拦不住；它们又大多是 PNG（不是 svg），「丢 svg」那条也兜不住。
+ * 徽章条和截图的差别全写在名字里 —— sponsor / logo / banner / avatar / 收款码 / 社群码
+ * 这些词一旦出现，基本可以断定这张图不是「产品长什么样」的证据。
+ *
+ * 注意匹配范围只到路径为止（不含 ?query）：
+ * query 里出现 logo=github 之类的参数是 CDN 的常见写法，拿它当判据会误伤真截图。
+ */
+const DECORATION_PATTERNS: RegExp[] = [
+  /sponsor/i,
+  /badge/i,
+  /logo/i,
+  /icon/i,
+  /avatar/i,
+  /banner/i,
+  /shield/i,
+  /sticker/i,
+  /qrcode/i,
+  /wechat/i,
+  /qq/i,
+  /group/i,
+  /alipay/i,
+  /paypal/i,
+  /ko-?fi/i,
+  /afdian/i
+]
+
+/**
+ * 「这张更像截图」的强信号：screenshot / shot / demo / preview / example。
+ * 路径里带这些词的图，在候选排序里排到前面。
+ */
+const SHOT_HINTS: RegExp[] = [/screenshot/i, /shots?/i, /demo/i, /preview/i, /example/i]
+
+/**
+ * 「更像截图目录」的弱信号：docs、assets、images 这类放素材的目录。
+ * 比 SHOT_HINTS 弱一档：README 里的徽章也一样塞在 images 目录里，
+ * 单靠目录名排不出先后，所以只当次级判据。
+ */
+const ASSET_HINTS: RegExp[] = [/docs\//i, /assets\//i, /images\//i]
+
+/**
+ * 极端宽高比的界限。截图基本是 16:9（1.78）、4:3（1.33）、手机长图（0.46 上下）；
+ * 徽章条和赞助商横幅才是 4:1 甚至更极端（实测那批赞助商 PNG 是 1040x238 / 1913x464 /
+ * 1280x511，比例 4.1–4.4）。所以 w/h 超过 3.2、或低于 0.42 的，判为「不像截图」。
+ * 只有 dims 读得到时才判：读不到宽高的图不动（宁可留也不误杀）。
+ */
+const MAX_ASPECT_RATIO = 3.2
+const MIN_ASPECT_RATIO = 0.42
+
+/**
+ * 比例过滤允许的补位数量：窄条图在下载完之后才被丢掉，
+ * 若不额外多收几张，丢两张就只剩 6 张（明明后面还有真截图）。
+ * 多收 RATIO_DROP_SLACK 张候选当缓冲，收尾再切回 MAX_IMAGES。
+ */
+const RATIO_DROP_SLACK = 4
+
+/**
+ * 短边下限：README 里常混着小方块图标 / logo（180x180、256x256 这种），
+ * 肉眼一眼能看出来，但宽高比检查放它们过去（1:1 很正常）。
+ * 280px 这条线是按真实数据挑的：主流界面截图短边都在 400px 以上，
+ * 而图标类基本不超过 256px。留 24px 缓冲，免得把 320x240 的老截图误杀。
+ * 和宽高比一样：命中太多时**第一张永远保底**，宁可留一张小图也不要空态。
+ */
+const MIN_SHOT_SIDE = 280
 
 /* ------------------------------------------------------------------ *
  * 缓存 + 并发去重
@@ -264,6 +338,42 @@ function extOf(ref: string): string {
 
 function isBadgeUrl(url: string): boolean {
   return BADGE_PATTERNS.some((re) => re.test(url))
+}
+
+/**
+ * 判断依据只看「路径 + 文件名」，不看 query：
+ * CDN 的 query 里常见 logo=github、?v=3 这类参数，拿它当装饰图判据会误伤真截图。
+ * 命中 DECORATION_PATTERNS 任意一条即为装饰图。
+ */
+function isDecorationUrl(url: string): boolean {
+  const pathOnly = url.split(/[?#]/)[0] ?? url
+  return DECORATION_PATTERNS.some((re) => re.test(pathOnly))
+}
+
+/**
+ * 候选排序分：截图强信号 2、素材目录 1、其它 0。
+ * 只用于「谁先被下载 / 谁进那 8 个名额」，不是硬过滤 —— 分低的一样可能在，
+ * 因为有的插件整份 README 的图都躺在根目录下，按目录名一刀切会全灭。
+ */
+function shotRank(url: string): number {
+  const pathOnly = url.split(/[?#]/)[0] ?? url
+  if (SHOT_HINTS.some((re) => re.test(pathOnly))) return 2
+  if (ASSET_HINTS.some((re) => re.test(pathOnly))) return 1
+  return 0
+}
+
+/** 宽高比；宽或高读不到就给 null（= 不参与比例过滤，宁可留也不误杀） */
+function aspectRatioOf(image: { width: number | null; height: number | null }): number | null {
+  const { width, height } = image
+  if (!width || !height || width <= 0 || height <= 0) return null
+  return width / height
+}
+
+/** 短边（读不到宽高时返回 null —— 不参与判断，别把没尺寸的图当小图砍了） */
+function shortSideOf(image: { width: number | null; height: number | null }): number | null {
+  const { width, height } = image
+  if (!width || !height || width <= 0 || height <= 0) return null
+  return Math.min(width, height)
 }
 
 /* ------------------------------------------------------------------ *
@@ -583,11 +693,24 @@ function tidyAlt(raw: string | null | undefined): string | null {
   return t || null
 }
 
+interface ExtractedImages {
+  /** 过了装饰图关键词的候选：正常情况下用这一份 */
+  images: RawImage[]
+  /** 只过了「扩展名白名单 + 域名徽章表」的候选：关键词筛完一张不剩时的兜底 */
+  fallback: RawImage[]
+  /** 被装饰图关键词丢掉的张数（用于在 warnings 里交代一句） */
+  dropped: number
+}
+
 /**
  * 从 README 里抽图：markdown 的 `![alt](url)` 与 HTML 的 `<img src>`，
- * 只留真截图（扩展名白名单 + 非徽章 + 非 data:），并按正文出现顺序排。
+ * 只留真截图（扩展名白名单 + 非域名徽章 + 非 data:），并按正文出现顺序排。
+ *
+ * 顺带把「看一眼就知道不是截图」的装饰图摘出来：命中关键词的那批留在 fallback 里 ——
+ * 万一筛完一张不剩（有的插件整份 README 只有徽章 + logo），上层会拿 fallback 继续跑，
+ * 宁可展示徽章，也不要给用户一块空白。
  */
-function extractImages(readme: string, ref: GithubRef | null): RawImage[] {
+function extractImages(readme: string, ref: GithubRef | null): ExtractedImages {
   const found: RawImage[] = []
 
   const push = (urlRaw: string | null, altRaw: string | null, index: number): void => {
@@ -619,7 +742,9 @@ function extractImages(readme: string, ref: GithubRef | null): RawImage[] {
     seen.add(img.url)
     out.push(img)
   }
-  return out
+
+  const images = out.filter((img) => !isDecorationUrl(img.url))
+  return { images, fallback: out, dropped: out.length - images.length }
 }
 
 /** 从 README 里整理外链（过滤图片链接与徽章域名，按正文顺序，最多 MAX_LINKS 条） */
@@ -710,8 +835,12 @@ async function loadImage(
 }
 
 /**
- * 并发下载（闸门已限制同时在飞的数量）：候选按正文顺序排队，凑够 MAX_IMAGES 张成功的才收工。
- * 保序返回——谁在 README 里靠前，谁就在前面。
+ * 并发下载（闸门已限制同时在飞的数量）：候选按「截图优先」排队，凑够名额就收工。
+ * 保序返回——排在前面的先返回。
+ *
+ * 名额比 MAX_IMAGES 多 RATIO_DROP_SLACK 张：宽高比这层筛子只有下载完、读到 IHDR 之后
+ * 才判得出来（4:1 的赞助商横条就是在这里被砍的），不多收几张的话，砍掉两张就只剩六张，
+ * 而队列后面的真截图明明还够。收尾时再切回 MAX_IMAGES。
  */
 async function loadAll(candidates: RawImage[], source: GalleryImage['source']): Promise<LoadedImages> {
   const warnings: string[] = []
@@ -721,14 +850,14 @@ async function loadAll(candidates: RawImage[], source: GalleryImage['source']): 
 
   const worker = async (): Promise<void> => {
     for (;;) {
-      if (hits.length >= MAX_IMAGES) return
+      if (hits.length >= MAX_IMAGES + RATIO_DROP_SLACK) return
       const index = cursor
       cursor += 1
       const img = queue[index]
       if (!img) return
       const slot = await loadImage(img, source)
       if (slot.warning) warnings.push(slot.warning)
-      if (slot.image && hits.length < MAX_IMAGES) hits.push({ index, image: slot.image })
+      if (slot.image) hits.push({ index, image: slot.image })
     }
   }
 
@@ -736,7 +865,50 @@ async function loadAll(candidates: RawImage[], source: GalleryImage['source']): 
   await Promise.all(Array.from({ length: workers }, () => worker()))
 
   hits.sort((a, b) => a.index - b.index)
-  return { images: hits.slice(0, MAX_IMAGES).map((h) => h.image), warnings }
+
+  /* 宽高比这层：hits 里靠后的长条图砍掉，但**第一张永远保底** ——
+     有的插件只放了一张宽幅封面图（4:1 那种），砍完就是空白，那比留一张难看更糟。
+     读不到宽高的图（aspectRatioOf 返回 null）不参与判断。 */
+  const kept: Array<{ index: number; image: GalleryImage }> = []
+  let ratioDropped = 0
+  let tinyDropped = 0
+  for (const hit of hits) {
+    const ratio = aspectRatioOf(hit.image)
+    const extreme = ratio !== null && (ratio > MAX_ASPECT_RATIO || ratio < MIN_ASPECT_RATIO)
+    if (extreme && kept.length > 0) {
+      ratioDropped += 1
+      continue
+    }
+    const shortSide = shortSideOf(hit.image)
+    if (shortSide !== null && shortSide < MIN_SHOT_SIDE && kept.length > 0) {
+      tinyDropped += 1
+      continue
+    }
+    kept.push(hit)
+  }
+  if (ratioDropped > 0) {
+    warnings.push(
+      `按宽高比丢掉了 ${ratioDropped} 张横条 / 长条图（宽高比超过 ${MAX_ASPECT_RATIO}:1 或低于 ${MIN_ASPECT_RATIO}:1，多半是徽章横幅或分隔条，不是界面截图）`
+    )
+  }
+  if (tinyDropped > 0) {
+    warnings.push(
+      `按尺寸丢掉了 ${tinyDropped} 张过小的图（短边不足 ${MIN_SHOT_SIDE}px，多半是图标或 logo，不是截图）`
+    )
+  }
+
+  /* 「保底留一张」这条规则遇到「README 里通通是小图标」时会反过来伤用户：
+     留下的那一张本身就是 180x180 的 logo，放大 4 倍也只是个更大的糊块。
+     这种情况判成「这个来源没有截图」，让调用方去下一级来源找（包内 README / 目录截图）。 */
+  if (tinyDropped > 0 && kept.length === 1) {
+    const only = shortSideOf(kept[0].image)
+    if (only !== null && only < MIN_SHOT_SIDE) {
+      warnings.push('这个来源里只找到图标类小图，没有界面截图')
+      return { images: [], warnings }
+    }
+  }
+
+  return { images: kept.slice(0, MAX_IMAGES).map((h) => h.image), warnings }
 }
 
 /* ------------------------------------------------------------------ *
@@ -822,13 +994,30 @@ async function harvest(
     readme = readme.slice(0, MAX_README_BYTES)
   }
 
-  const all = extractImages(readme, ref)
-  if (all.length === 0) return null
+  const extracted = extractImages(readme, ref)
+  if (extracted.images.length === 0 && extracted.fallback.length === 0) return null
+
+  /* 关键词筛完一张不剩 → 退回筛前那份：有的插件整份 README 只有徽章和 logo，
+     这时候「给一张不太像截图的图」远比「显示这里没有截图」有用（也更接近原行为）。 */
+  let all = extracted.images
+  if (all.length === 0) {
+    all = extracted.fallback
+    warnings.push(
+      `README 里的图全都命中了「徽章 / 赞助商 logo」这类装饰图关键词，先原样保留这 ${all.length} 张，避免整块留白`
+    )
+  } else if (extracted.dropped > 0) {
+    warnings.push(`按「徽章 / 赞助商 logo」这类关键词丢掉了 ${extracted.dropped} 张装饰图`)
+  }
+
+  /* 截图优先排序：路径里的 screenshot / demo / preview / example 是强信号（2 分），
+     docs、assets、images 这类素材目录是弱信号（1 分）；同档保持正文顺序（index 升序）。
+     只影响「谁进那 8 个名额」，不影响任何一张的存留资格。 */
+  all = [...all].sort((a, b) => shotRank(b.url) - shotRank(a.url) || a.index - b.index)
 
   const links = extractLinks(readme)
   const candidates = all.slice(0, MAX_IMAGE_ATTEMPTS)
   if (all.length > MAX_IMAGES) {
-    warnings.push(`README 里有 ${all.length} 张图，最多取正文里靠前的 ${MAX_IMAGES} 张`)
+    warnings.push(`README 里有 ${all.length} 张图，最多取「截图优先」排好后的前 ${MAX_IMAGES} 张`)
   }
 
   const loaded = await loadAll(candidates, source)

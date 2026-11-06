@@ -53,6 +53,28 @@
   border-bottom-color: var(--gl-bed-edge);
 }
 
+/* 目录补的中文简介下面那行原文（英文）。它是**佐证**不是内容：
+   字号小一档、颜色退到 fg-2（弱化文字 / 元信息 —— 这一档在深色底上是 #6d7788，
+   对衬底的对比度约 3.8:1，比 fg-3「禁用文字」那档明显能读，又低于正文一档），
+   并且不参与上面那条分界线 —— 用户扫一眼就知道这是附注。 */
+.detail .detail__desc-src {
+  margin: calc(-1 * var(--sp-3)) 0 var(--sp-4);
+  color: var(--fg-2);
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.detail .detail__desc-src-tag {
+  display: inline-block;
+  margin-right: var(--sp-2);
+  padding: 0 var(--sp-1);
+  border: 1px solid var(--gl-bed-edge);
+  border-radius: var(--radius-xs);
+  color: var(--fg-1);
+  font-size: var(--fs-xxs);
+}
+
 /* ------------------------------- 换版本面板：固定块 ------------------------------- */
 
 /* 跟在正文之后、操作栏之上：「换版本」按钮在操作栏里，选择器贴着它展开最不容易看漏。

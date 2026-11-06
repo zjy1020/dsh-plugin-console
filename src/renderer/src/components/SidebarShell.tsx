@@ -62,6 +62,12 @@ const IconGear = () => (
     <path d="M8 1.8v1.6M8 12.6v1.6M2.8 8h1.6M11.6 8h1.6M4.3 4.3l1.1 1.1M10.6 10.6l1.1 1.1M11.7 4.3l-1.1 1.1M5.4 10.6l-1.1 1.1" />
   </svg>
 )
+const IconFont = () => (
+  <svg {...ICON_PROPS}>
+    <path d="M3.6 12.6 8 3.4l4.4 9.2" />
+    <path d="M5.3 9.4h5.4" />
+  </svg>
+)
 const IconUser = () => (
   <svg {...ICON_PROPS}>
     <circle cx="8" cy="5.6" r="2.6" />
@@ -181,6 +187,16 @@ export function SidebarShell() {
            * 用户以为点了没反应）。active 也按 view 判断 —— 滑块跟着走。 */
           go: () => actions.setView('logs'),
           active: state.view === 'logs'
+        },
+        {
+          id: 'fonts',
+          label: 'DSH 字体',
+          icon: <IconFont />,
+          hint: '改 DSH 本体界面的正文 / 代码 / 终端字体',
+          /* 位置放在「运行日志」与「环境与设置」之间：它们三个都是「改 DSH 本体或看它跑了什么」，
+           * 跟上面那组「筛选」是两回事（筛选是同一份数据的切面，这组是另外的目的地）。 */
+          go: () => actions.setView('fonts'),
+          active: state.view === 'fonts'
         },
         {
           id: 'settings',

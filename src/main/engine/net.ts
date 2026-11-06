@@ -431,6 +431,8 @@ export async function npmSearch(query: string, limit: number): Promise<SearchHit
       name,
       version: str(p.version) ?? '',
       description: str(p.description),
+      // 中文由 catalogZh 在 IPC 出口补；这里只搬 npm 给的英文，保持这层只管网络
+      descZh: null,
       keywords: keywordsOf(p.keywords),
       publisher: publisher ? str(publisher.username) ?? str(publisher.name) : null,
       updatedAt: str(p.date),

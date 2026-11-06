@@ -8,6 +8,9 @@ import type {
   DiscoveryStep,
   DshActionResult,
   DshStatus,
+  FontsReadResult,
+  FontsWriteInput,
+  FontsWriteResult,
   ManifestExportResult,
   ManifestPreview,
   PluginIconResult,
@@ -29,6 +32,7 @@ import type {
   RuntimePayloadPart,
   RuntimeSourceInfo,
   SearchHit,
+  SystemFontsResult,
   ThemeExportFile,
   ThemeFileResult,
   ThemeSpec,
@@ -87,6 +91,11 @@ export const CH = {
 
   /* 外观：一键还原 */
   appearanceReset: 'api:appearance-reset',
+
+  /* DSH 本体字体（写 profile 的 cordis.patch.yml 里 ui-theme 的三个键） */
+  readFonts: 'api:fonts-read',
+  writeFonts: 'api:fonts-write',
+  systemFonts: 'api:fonts-system',
 
   /* 环境：手动挑选目录 + 重新探测 */
   pickDirectory: 'api:pick-directory',
@@ -226,6 +235,28 @@ export interface DshConsoleApi {
    * 壁纸文件本身不删（只是取消选中），否则还原一次就把用户导入的图弄没了。
    */
   appearanceReset(): Promise<AppSettings>
+
+  /* ── DSH 本体字体 ───────────────────────────────────── */
+
+  /**
+   * 读某个 profile 的 ui-theme 字体设置。
+   *
+   * 数据源是 `<profileDir>/cordis.patch.yml` 里 `- id: ui-theme` 条目的 config，
+   * 同时也把 home 补丁（`~/.dsh/cordis.patch.yml`）读一份回来 —— 它优先级更高，
+   * 设了字体就会把 profile 里的值压住，UI 必须能说出这件事。
+   * 不抛：异常走返回值里的 ok/error。
+   */
+  readFonts(profile: string): Promise<FontsReadResult>
+  /**
+   * 写 ui-theme 的字体三键。
+   *
+   * `expectedMtimeMs` 是读的时候拿到的 mtime：DSH 自己的设置面板写的就是这个文件，
+   * 不带上它就会盲盖用户刚在 DSH 里做的修改（那时返回 conflict=true，文件不动）。
+   * 值相同会直接跳过不写 —— 白改一次 mtime 就白触发一轮 DSH 热加载。
+   */
+  writeFonts(profile: string, patch: FontsWriteInput, expectedMtimeMs?: number): Promise<FontsWriteResult>
+  /** 枚举已装字体家族（进程内缓存 10 分钟；force=true 强制重扫） */
+  listSystemFonts(force?: boolean): Promise<SystemFontsResult>
 
   /* ── 环境：手动挑选 + 重新探测 ─────────────────────── */
 

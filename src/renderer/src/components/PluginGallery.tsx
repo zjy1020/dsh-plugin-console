@@ -10,11 +10,23 @@
  *   错误  → 中文原因 + 「重试」
  *   正常  → 缩略图网格
  *
- * 预览层：点缩略图后在**详情面板范围内**铺一层，Esc 关闭、← / → 切换、
+ * 预览层：点缩略图后开一层**整窗灯箱**，Esc 关闭、← / → 切换、
  * aria-modal + 关闭后焦点回退到打开它的那张缩略图、Tab 焦点锁在层内。
+ *
+ * 为什么是整窗灯箱，而不是「盖在宿主面板上」：
+ * 图集是看图的，1440x810 的截图塞进 400px 宽的详情栏（或市场那个 max-width:720px 的
+ * sheet）里，放大等于没放大 —— 实测市场路径下预览层只剩 653x243，图被压成 173x97。
+ * 所以这里不再去量宿主面板，直接铺满窗口；连带的「量面板 + resize / scroll 重算」整套
+ * 逻辑（原来量的是 rootRef.closest('.detail')，而市场的外壳根本不是 .detail）一起删掉。
+ *
+ * 为什么要 portal 到 document.body：`position:fixed` 的包含块会被带 backdrop-filter /
+ * transform 的祖先抢走。市场 tab 挂在 .app__main.shell-main 里面，它身上有
+ * backdrop-filter 与 overflow:hidden（glass.css:1287 / 1290）—— 留在原地的话
+ * fixed inset:0 只等于「主区」，还会被 overflow 裁掉一个角，而不是整窗。
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react'
+import { createPortal } from 'react-dom'
 
 import type { GalleryImage, GalleryResult } from '../../../shared/types'
 import { api, toMessage } from '../api'
@@ -33,12 +45,21 @@ export interface PluginGalleryProps {
 /** 骨架块数量：和常见截图数差不多，铺满两行 */
 const SKELETON_COUNT = 6
 
-/** 预览层对齐用的面板矩形（跟着窗口尺寸变化重算） */
-interface PanelRect {
-  left: number
-  top: number
-  width: number
-  height: number
+/** 预览层允许的最大放大倍数 */
+const UPSCALE_MAX = 4
+/** 放大上限的地板：再小的图也至少给这么大的盒子，否则在大窗口里就是个点 */
+const UPSCALE_FLOOR = 320
+
+/**
+ * 按图片天然尺寸算 inline 的 max-width / max-height。
+ * 读不到尺寸（非位图或头没解析出来）就不卡 —— 宁可让它铺满，也不要因为拿不到数据就变小。
+ */
+function upscaleCap(img: GalleryImage): CSSProperties | undefined {
+  if (!img.width || !img.height) return undefined
+  return {
+    maxWidth: `${Math.max(img.width * UPSCALE_MAX, UPSCALE_FLOOR)}px`,
+    maxHeight: `${Math.max(img.height * UPSCALE_MAX, UPSCALE_FLOOR)}px`,
+  }
 }
 
 export function PluginGallery({ profile, name, compact = false }: PluginGalleryProps): ReactElement {
@@ -51,10 +72,7 @@ export function PluginGallery({ profile, name, compact = false }: PluginGalleryP
 
   /** 预览层当前显示第几张；null = 没开 */
   const [open, setOpen] = useState<number | null>(null)
-  /** 预览层要覆盖的矩形（详情面板的位置与大小） */
-  const [rect, setRect] = useState<PanelRect | null>(null)
 
-  const rootRef = useRef<HTMLDivElement | null>(null)
   const layerRef = useRef<HTMLDivElement | null>(null)
   const openerRef = useRef<HTMLElement | null>(null)
 
@@ -97,38 +115,14 @@ export function PluginGallery({ profile, name, compact = false }: PluginGalleryP
 
   /* ---------------- 预览层 ---------------- */
 
-  /** 量一下详情面板现在在哪、多大（预览层严格盖在它里面） */
-  const measure = useCallback((): void => {
-    const host = rootRef.current?.closest('.detail') ?? rootRef.current
-    if (!host) return
-    const r = host.getBoundingClientRect()
-    setRect({ left: r.left, top: r.top, width: r.width, height: r.height })
+  const openAt = useCallback((index: number, opener: HTMLElement | null): void => {
+    openerRef.current = opener ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
+    setOpen(index)
   }, [])
-
-  const openAt = useCallback(
-    (index: number, opener: HTMLElement | null): void => {
-      openerRef.current = opener ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
-      measure()
-      setOpen(index)
-    },
-    [measure]
-  )
 
   const close = useCallback((): void => {
     setOpen(null)
   }, [])
-
-  /* 开着预览时窗口尺寸 / 面板滚动都会让矩形失效，跟着重算 */
-  useEffect(() => {
-    if (open === null) return
-    const onMove = (): void => measure()
-    window.addEventListener('resize', onMove)
-    window.addEventListener('scroll', onMove, true)
-    return () => {
-      window.removeEventListener('resize', onMove)
-      window.removeEventListener('scroll', onMove, true)
-    }
-  }, [open, measure])
 
   /* 打开时把焦点交给预览层本身（Tab 的第一站就在层里） */
   useEffect(() => {
@@ -211,7 +205,7 @@ export function PluginGallery({ profile, name, compact = false }: PluginGalleryP
   /* ---------------- 渲染 ---------------- */
 
   return (
-    <div className={`gal${compact ? ' gal--compact' : ''}`} ref={rootRef}>
+    <div className={`gal${compact ? ' gal--compact' : ''}`}>
       <div className="gal__bar">
         <span className="gal__meta">
           {loading
@@ -285,7 +279,7 @@ export function PluginGallery({ profile, name, compact = false }: PluginGalleryP
             ))}
           </div>
 
-          {!compact ? <span className="gal__hint">点缩略图在详情面板里放大查看，放大后按 Esc 关闭。</span> : null}
+          {!compact ? <span className="gal__hint">点缩略图整窗放大查看，放大后按 Esc 关闭。</span> : null}
 
           {!compact && warnings.length > 0 ? (
             <ul className="gal__warns">
@@ -318,72 +312,91 @@ export function PluginGallery({ profile, name, compact = false }: PluginGalleryP
         </>
       )}
 
-      {current && rect && open !== null ? (
-        <div
-          className="gal-preview"
-          style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
-          role="dialog"
-          aria-modal="true"
-          aria-label={`${name} 的截图预览`}
-          tabIndex={-1}
-          ref={layerRef}
-          onKeyDown={onLayerKeyDown}
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) close()
-          }}
-        >
-          <div className="gal-preview__box">
-            <div className="gal-preview__head">
-              <span className="gal-preview__counter">{`第 ${open + 1} / ${images.length} 张`}</span>
-              <span className="gal-preview__spacer" aria-hidden="true" />
-              <button
-                type="button"
-                className="btn btn--sm btn--ghost"
-                onClick={() => void actions.openExternal(current.url)}
-                title={current.url}
-              >
-                打开原图
-              </button>
-              <button
-                type="button"
-                className="icon-btn gal-preview__close"
-                onClick={close}
-                aria-label="关闭预览"
-                title="关闭预览 (Esc)"
-              >
-                ✕
-              </button>
-            </div>
+      {current && open !== null
+        ? createPortal(
+            <div
+              className="gal-preview"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`${name} 的截图预览`}
+              tabIndex={-1}
+              ref={layerRef}
+              onKeyDown={onLayerKeyDown}
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) close()
+              }}
+            >
+              <div className="gal-preview__box">
+                <div className="gal-preview__head">
+                  <span className="gal-preview__counter">{`第 ${open + 1} / ${images.length} 张`}</span>
+                  <span className="gal-preview__spacer" aria-hidden="true" />
+                  <button
+                    type="button"
+                    className="btn btn--sm btn--ghost"
+                    onClick={() => void actions.openExternal(current.url)}
+                    title={current.url}
+                  >
+                    打开原图
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-btn gal-preview__close"
+                    onClick={close}
+                    aria-label="关闭预览"
+                    title="关闭预览 (Esc)"
+                  >
+                    ✕
+                  </button>
+                </div>
 
-            <div className="gal-preview__stage">
-              <img className="gal-preview__img" src={current.dataUrl} alt={altOf(current, open)} draggable={false} />
-            </div>
+                <div className="gal-preview__stage">
+                  <img
+                    className="gal-preview__img"
+                    src={current.dataUrl}
+                    alt={altOf(current, open)}
+                    draggable={false}
+                    /*
+                      旧写法是 max-width/height:100%（绝不放大），窗口里那张 180x180 的
+                      README 首图就只剩邮票大小，用户的抱怨正是「很小而且很偏」。
+                      现在改成铺满 + 上限 UPSCALE_MAX 倍：小图看得清，大图不糊成一团，
+                      唯一代价是极小的图会被插值放大（尺寸读数就写在下面，不作假）。
+                    */
+                    style={upscaleCap(current)}
+                  />
+                </div>
 
-            <div className="gal-preview__caption">{altOf(current, open)}</div>
+                <div className="gal-preview__caption">
+                  {current.width && current.height ? (
+                    <span className="gal-preview__dims">{`${current.width} × ${current.height}`}</span>
+                  ) : null}
+                  {current.alt?.trim() ? <span>{current.alt.trim()}</span> : null}
+                </div>
 
-            <div className="gal-preview__foot">
-              <button
-                type="button"
-                className="btn btn--sm btn--ghost"
-                onClick={() => step(-1)}
-                disabled={images.length < 2}
-              >
-                上一张
-              </button>
-              <button
-                type="button"
-                className="btn btn--sm btn--ghost"
-                onClick={() => step(1)}
-                disabled={images.length < 2}
-              >
-                下一张
-              </button>
-              <span className="gal-preview__spacer" aria-hidden="true" />
-              <span className="gal-preview__hint">← → 切换，Esc 关闭</span>
-            </div>
-          </div>
-        </div>
-      ) : null}
+                <div className="gal-preview__foot">
+                  <button
+                    type="button"
+                    className="btn btn--sm btn--ghost"
+                    onClick={() => step(-1)}
+                    disabled={images.length < 2}
+                  >
+                    上一张
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--sm btn--ghost"
+                    onClick={() => step(1)}
+                    disabled={images.length < 2}
+                  >
+                    下一张
+                  </button>
+                  <span className="gal-preview__spacer" aria-hidden="true" />
+                  <span className="gal-preview__hint">← → 切换，Esc 关闭</span>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   )
 }

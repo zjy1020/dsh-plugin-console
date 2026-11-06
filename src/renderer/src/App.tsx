@@ -18,6 +18,8 @@ import {
   wrongPickMessage
 } from './components/EnvDiagnostics'
 import { InstallPanel } from './components/InstallPanel'
+import FontPanel from './components/FontPanel'
+import { EmptyState } from './components/EmptyState'
 import { LogDrawer } from './components/LogDrawer'
 import { PluginDetail } from './components/PluginDetail'
 import { PluginList } from './components/PluginList'
@@ -308,6 +310,17 @@ function Shell() {
           <div className="app__view">
             {state.view === 'logs' ? (
               <LogDrawer />
+            ) : state.view === 'fonts' ? (
+              /* 字体是写进**某个 profile** 的 cordis.patch.yml 的，没有 profile 就没有落点。
+               * 这里不 disable 按钮也不假装能改，直接把话说清楚。 */
+              state.activeProfile ? (
+                <FontPanel profile={state.activeProfile} />
+              ) : (
+                <EmptyState
+                  title="先选一个 profile"
+                  hint="字体是写进 profile 的 cordis.patch.yml 的（DSH 读这个文件），所以得先确定改哪个 profile。"
+                />
+              )
             ) : state.view === 'plugins' ? (
               <PluginList />
             ) : (

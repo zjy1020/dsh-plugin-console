@@ -10,6 +10,7 @@ import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent }
 import type { InstallPreview, ManifestPreview, SearchHit, VersionOption } from '../../../shared/types'
 import { api, toMessage, useDebouncedValue } from '../api'
 import { useConsole, type InstallConfirmHint } from '../lib/store'
+import { hitDesc } from '../lib/desc'
 import { EmptyState } from './EmptyState'
 import { envRedetectFn, pickDirectoryFn, pickedIsValid, wrongPickMessage } from './EnvDiagnostics'
 import { MarketTab } from './MarketTab'
@@ -513,7 +514,7 @@ function SearchTab({ profile, busy }: { profile: string; busy: boolean }) {
                   <span className="badge badge--muted mono">{hit.version}</span>
                   {hit.links.repository ? <span className="badge badge--muted">repo</span> : null}
                 </div>
-                <div className="hit__desc clamp-2">{hit.description || '—'}</div>
+                <div className="hit__desc clamp-2">{hitDesc(hit) || '—'}</div>
                 <div className="hit__meta mono">
                   {hit.publisher ? <span>by {hit.publisher}</span> : null}
                   {hit.updatedAt ? <span>更新于 {hit.updatedAt}</span> : null}

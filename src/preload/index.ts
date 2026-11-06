@@ -6,6 +6,9 @@ import type {
   DiscoveryStep,
   DshActionResult,
   DshStatus,
+  FontsReadResult,
+  FontsWriteInput,
+  FontsWriteResult,
   ManifestExportResult,
   ManifestPreview,
   PluginIconResult,
@@ -26,6 +29,7 @@ import type {
   RegistryPackument,
   RuntimeInfo,
   SearchHit,
+  SystemFontsResult,
   ThemeFileResult,
   ThemeSpec,
   UpdateCheckProgress,
@@ -118,6 +122,19 @@ const api: DshConsoleApi = {
   themeExport: (id) => ipcRenderer.invoke(CH.themeExport, id) as Promise<ThemeFileResult>,
   themeImport: (text) => ipcRenderer.invoke(CH.themeImport, text) as Promise<ThemeSpec>,
   appearanceReset: () => ipcRenderer.invoke(CH.appearanceReset) as Promise<AppSettings>,
+
+  /* ── DSH 本体字体 ───────────────────────────────────── */
+
+  /*
+   * 方法名固定是 readFonts / writeFonts / listSystemFonts：
+   * FontPanel 不传 api prop 时会去 globalThis.dsh 上按这三个名字取（渲染层沙盒里
+   * 拿不到主进程对象，只能靠名字对齐）。改名就得再加一层适配。
+   */
+  readFonts: (profile) => ipcRenderer.invoke(CH.readFonts, profile) as Promise<FontsReadResult>,
+  writeFonts: (profile, patch, expectedMtimeMs) =>
+    ipcRenderer.invoke(CH.writeFonts, profile, patch, expectedMtimeMs) as Promise<FontsWriteResult>,
+  listSystemFonts: (force) =>
+    ipcRenderer.invoke(CH.systemFonts, force) as Promise<SystemFontsResult>,
 
   /* ── 环境：手动挑选 + 重新探测 ─────────────────────── */
 

@@ -85,7 +85,7 @@ export const FILTERS: FilterMeta[] = [
 /* 日志也是 view：用户原话「日志为什么点开之后还是在已安装，而不是显示日志呢」——
  * 底部抽屉永远盖不住主区，侧栏点「运行日志」就必须把主区换成日志。
  * 与抽屉的另一个区别：view 是互斥的目的地，抽屉是「叠在别人身上的一块」。 */
-export type ViewKey = 'plugins' | 'install' | 'logs'
+export type ViewKey = 'plugins' | 'install' | 'logs' | 'fonts'
 
 export type ToastLevel = 'info' | 'success' | 'warn' | 'error'
 

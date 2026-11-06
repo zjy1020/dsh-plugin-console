@@ -5,6 +5,7 @@ import { CH, EV } from '../shared/ipc'
 import type {
   AppSettings,
   DshStatus,
+  FontsWriteInput,
   OpLogLine,
   OpRequest,
   ProvisionProgress,
@@ -15,6 +16,7 @@ import type {
 } from '../shared/types'
 
 import * as env from './engine/env'
+import * as catalogZh from './engine/catalogZh'
 import * as inventory from './engine/inventory'
 import * as updates from './engine/updates'
 import * as spec from './engine/spec'
@@ -32,6 +34,7 @@ import { diag } from './diagnostics'
 import * as gallery from './engine/gallery'
 import * as wallpaper from './engine/wallpaper'
 import * as themes from './engine/themes'
+import * as fonts from './engine/fonts'
 import * as dshpm from './engine/dshpm'
 import * as provision from './engine/provision'
 
@@ -196,8 +199,14 @@ export function registerIpc(): void {
   ipcMain.handle(CH.profiles, async () => inventory.listProfiles())
 
 
+  /*
+   * 出 IPC 之前补一次目录中文简介：
+   * 已装列表与搜索结果里的简介本来都是包自己 / npm 给的英文，用户看不懂就等于没有。
+   * 这一层只读本地目录缓存（不联网、不阻塞 —— 目录从没抓过就整层跳过），
+   * 所以放在出口做，而不是塞进 inventory / net 里让它们依赖「市场页有没有抓过目录」。
+   */
   ipcMain.handle(CH.plugins, async (_e, profile: string, opts?: { deep?: boolean }) =>
-    inventory.listPlugins(profile, opts)
+    catalogZh.annotatePlugins(await inventory.listPlugins(profile, opts))
   )
 
   /* ---------------- 更新检查 ---------------- */
@@ -211,7 +220,7 @@ export function registerIpc(): void {
   )
 
   ipcMain.handle(CH.registrySearch, async (_e, query: string, limit?: number) =>
-    net.npmSearch(query, limit ?? 25)
+    catalogZh.annotateHits(await net.npmSearch(query, limit ?? 25))
   )
 
   /* ---------------- 来源解析 ---------------- */
@@ -479,6 +488,27 @@ export function registerIpc(): void {
     env.invalidate()
     return next
   })
+
+  /* ---------------- DSH 本体字体 ---------------- */
+
+  /*
+   * 路径：写 profile 的 cordis.patch.yml 里 `- id: ui-theme` 条目的 config 三个键。
+   * 不走「往界面注入 style 标签」那条插件式打法 —— 字体是 DSH 本体自带的配置项，
+   * 而且是 volatile 的（hmr 热生效，不用重启 DSH）。
+   * 引擎侧只做行级扫描 + 精确替换，别的条目/键/注释不动，写前备份、写时双校验 mtime。
+   */
+
+  ipcMain.handle(CH.readFonts, async (_e, profile: string) => fonts.readFonts(profile))
+
+  ipcMain.handle(
+    CH.writeFonts,
+    async (_e, profile: string, patch: FontsWriteInput, expectedMtimeMs?: number) =>
+      fonts.writeFonts(profile, patch, expectedMtimeMs)
+  )
+
+  ipcMain.handle(CH.systemFonts, async (_e, force?: boolean) =>
+    fonts.listSystemFonts(force === true)
+  )
 
   /* ---------------- 窗口控制 ---------------- */
 

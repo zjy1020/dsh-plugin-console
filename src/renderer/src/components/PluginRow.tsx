@@ -8,6 +8,7 @@
 
 import type { PluginRecord } from '../../../shared/types'
 import { describeSource, describeUpdateKind, formatBytes, orDash } from '../lib/format'
+import { pluginDesc } from '../lib/desc'
 import { hasUpdateError, useConsole } from '../lib/store'
 import { PluginIcon } from './PluginIcon'
 
@@ -60,7 +61,7 @@ export function PluginRow({
       tabIndex={-1}
       onClick={onRowClick}
       data-plugin-name={rec.name}
-      title={rec.description ?? rec.name}
+      title={pluginDesc(rec) ?? rec.name}
     >
       <div className="prow__main">
         <div className="prow__line1">
@@ -119,7 +120,7 @@ export function PluginRow({
         </div>
 
         <div className="prow__line2">
-          <span className="prow__desc truncate">{orDash(rec.description)}</span>
+          <span className="prow__desc truncate">{orDash(pluginDesc(rec))}</span>
           {rec.sizeBytes !== null ? (
             <span className="prow__size mono" title="node_modules 占用">
               {formatBytes(rec.sizeBytes)}

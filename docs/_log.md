@@ -592,3 +592,130 @@ if (/Repository not found|ERROR: Repository not found|repository .{0,160}not fou
 - **确认框里能直接看出 bug**：bug 2 的真凶是在确认框正文里现形的 —— 「来源 `dsh plugin --profile web add @tt-a1i/archify-dsh`」「命令行等效：`pnpm add dsh plugin --profile web add @tt-a1i/archify-dsh`」。**把「界面写的」和「实际执行的」并排放在一个弹窗里，这类 bug 自己会跳出来。**
 - **改工程代码之前，先拿真实数据跑纯函数**：`marketSpec.ts` 是纯函数，单独 `tsc` 出来配 4 行脚本就能把整个目录 9111 条喂一遍，一秒拿到「解析为空 0 / 含空格 0」。比开界面点一百次快得多。
 - **数一下「有几张有图」比盯着截图看有用**：`img 2 / mono 46` 这个数字一眼就把「覆盖率问题」和「加载失败问题」分开了（加载失败会是 0/48 或者一半半）。
+
+---
+
+## 2026-11-06 第七批①：已装列表 / 搜索结果的简介全是英文
+
+**Master 原话**：「这些简介他们的README没有中文的吗，英文的看不懂，导致不知道这个插件的功能是什么」
+
+### 结论：插件市场目录里 100% 有中文，是我们没接
+
+`C:\Users\YBY\AppData\Roaming\DSH 插件台\catalog.json` 里 **9111 条，`description.zh` 覆盖 9111/9111**。我们三个界面（已装列表行、详情面板、npm 搜索命中）用的却是包自己的 `package.json description` —— 社区插件十有八九写英文。中文一直在磁盘上，从来没读。
+
+**顺手核了一件容易想歪的事**：`capabilities` 字段不是「能力说明」，是权限标签（`fs-write` / `network`）；`capabilityRedLines` 同理。目录里**没有 README**，中文简介就是 `description.zh` 那一行完整句子（不是摘要片段）。
+
+### 索引键：缺一个就大面积漏
+
+拿已装 17 个依赖实测，只靠 `name` 只能命中一部分。**四个键都得建索引**：
+
+| 键 | 例子 |
+|---|---|
+| `name` | `dsh-context` |
+| `npm` 字段 | `dsh-market` ← 装的是 `dshmarket`（名字不一样，靠这列命中） |
+| `name` 里 `#` 之后那段（monorepo 子目录） | `dsh-web#packages/dsh-remote-web-ui` ← 装的是 `@linxin666/dsh-remote-web-ui` |
+| 各段的**最后一级路径** | `dsh-wallpaper-engine` ← 装的是 `dsh-plugin-wallpaper-engine` |
+
+实测命中 **14/17**；没命中的三个（`dsh-agent2api-hud` / `dsh-purge-community` / `dsh-raccoon-merge`）前两个的 `package.json description` 本来就是中文，第三个根本没有 description 字段（显示 `—`）。
+
+### 落点：在 IPC 出口注释，不塞进 inventory / net
+
+```
+ipcMain.handle(CH.plugins, ...)       → catalogZh.annotatePlugins(await inventory.listPlugins(...))
+ipcMain.handle(CH.registrySearch, ...) → catalogZh.annotateHits(await net.npmSearch(...))
+```
+
+理由：`inventory` 是纯读盘映射，让它去读目录缓存就等于「列个插件列表还要取决于市场页有没有抓过目录」。放在出口，两个引擎模块对这层一无所知。渲染层统一走 `src/renderer/src/lib/desc.ts` 的 `pluginDesc(rec)` = `rec.descZh ?? rec.description`。
+
+**缓存键用 `mtime:size`**，所以市场点「重新拉取」重写 catalog.json 之后自动失效，不需要任何显式清理；读不到 / 文件坏掉一律返回 null（**少一句中文是遗憾，空一行是 bug** —— 界面会平滑退回英文原文）。
+
+### 详情面板里那行「原文（英文）」
+
+目录的中文有时是 README 首段（`dsh-plugin-wallpaper-engine` 那条以「前置要求：…」开头），不是概述。所以详情面板在「中文是目录补的、且原文和中文不一样」时，多渲染一行小字标出原文 —— 用户想核对作者原话时对得上，也不会以为这是作者写的中文。
+
+**配色踩了一脚**：第一版给了 `--fg-3`，实测是 `#4a5260` = 这张 token 表的**「禁用文字」**档，对深色衬底只有约 2.2:1，一整句英文读起来费劲。改 `--fg-2`（`#6d7788`，「弱化文字 / 元信息」那一档，约 3.8:1）。**教训：`--fg-*` 是按语义分的，不是按「越往后越淡」排的 —— 拿禁用档写正文，视觉上是「这块坏了」。**
+
+### 验证
+
+- 已装列表 **17 行 → 16 行中文**（第 17 行本来就没有 description）；`node scripts/cdp-eval.mjs --file scripts/_probe-zh-desc.js`
+- 详情面板：`dsh-context` 出中文简介（108 字）+ 原文行（3 行，`overflowsX 0`）
+- npm 搜索：`window.dsh.registrySearch('dsh-context', 4)` → 3 条有中文、`dsh-context-milvus-core` 目录里没有 → 正确退回 null
+- 截图 `docs\shots\bugfix-zh-desc-01.png`
+
+---
+
+## 2026-11-06 第七批②③：README 截图预览「很小而且很偏」+ 给插件台加 DSH 字体功能
+
+### ② 截图预览：两个齿轮同时空转
+
+- **量宿主矩形量错了对象**：`PluginGallery` 原来用 `rootRef.current?.closest('.detail')` 找宿主面板量尺寸，而**市场详情页的外壳不是 `.detail`**（是 `.mkt__sheet`）——`closest` 返回 null，于是退化成量 `.gal` 自己（653x243）；同时 `gallery.css` 里 `.detail .gal-preview { inset:0 !important }` 那条特例也只对 `.detail` 生效。两个齿轮一起空转，1440x810 的截图被压成 **173x97**。
+- **改成整窗灯箱**：删掉 measure / rect / resize·scroll 重算整套逻辑，`.gal-preview` 直接 `position:fixed; inset:0`。**必须 `createPortal` 到 `document.body`** —— `.app__main.shell-main` 上有 `backdrop-filter`，它会成为 `position:fixed` 的包含块，留在原地的话「整窗」只等于「主区」，还会被 `overflow:hidden` 裁掉一个角。
+- 实测：`layerRect [731,427,653,134] → [0,0,1320,882]`；`stageRect` 高 `16 → 698`。
+
+### ② 又一层：README 里的「截图」常常不是截图
+
+`hindsight` 的 README 里 6 张图，前 5 张是赞助商横幅（1040x238 / 1913x464 / 1280x511，宽高比 4.1–4.4）。加了三层筛：装饰图关键词（sponsor|badge|logo|banner|shield|…）→ 截图路径优先排序 → 下载后按宽高比（>3.2:1 或 <0.42:1）丢。
+
+**再补一层尺寸筛（短边 < 280px）**：图标 / logo 是 180x180、256x256 这种，宽高比正常所以前一层的筛子放它们过去，但一眼就知道不是界面截图。**这里有个反直觉的连锁反应值得记**：原来的「第一张永远保底」规则会救回一张 180x180 的 logo，放大 4 倍只是个更大的糊块。所以补了一条 —— 如果**幸存的那一张本身就是小图**，判成「这个来源没有截图」，返回空让调用方去下一级来源（包内 README → 目录截图）。实测 `hindsight`：npm readme 那级全是图标 → 落到 GitHub raw README.md → 拿到 **4 张真截图（6755x3097 / 1708x878 / 1080x388 / 1080x787）**。
+
+**灯箱的放大策略也改了**：原来是「绝不放大超过天然尺寸」，理由是「硬拉只会是一格更大的糊块」—— 道理没错，但**用户的抱怨是「很小」**，180x180 在 1213x698 的舞台上就是一枚邮票。现在铺满舞台 + 上限 `UPSCALE_MAX = 4` 倍（地板 320px，免得极小的图被放大成噪点），并且**把真实尺寸写在说明行里**（`6755 × 3097  Overview`）—— 放大可以，但不能让用户以为原图就这分辨率。
+
+### ③ DSH 字体功能：接线文档与代码不一致 → 白屏
+
+- 调研结论（详见 `docs\ref-font-injection.md`）：**路径 A** = 写 profile 的 `cordis.patch.yml` 里 `- id: ui-theme` 条目 `config` 的 `textFontFamily / codeFontFamily / terminalFontFamily` 三个键。DSH 侧这三个键是 `volatile()`（热改，不用重启），`dsh-hmr` 监听 patch 文件，所以落盘后**几秒内 DSH 自己的界面就换字体**。这条路不碰渲染进程注入，也不碰安装目录。
+- **炸出的真 bug**：子代理交稿时 `tsc` 双绿、`electron-vite build` EXIT=0，但**界面全白**（`#root` 一个子节点都没有）。它的接线文档写「方法名必须是 readFonts / writeFonts / **systemFonts**」，而它自己的 `FontsApi` 接口第三个方法叫 **`listSystemFonts`** —— 我按文档接的 preload，面板调 `api.listSystemFonts()` 当场抛 `TypeError`，异常在 `useEffect` 里、没有 try/catch，**把整棵 React 树带崩**。
+- **教训一：接线文档是别人的话，代码才是事实。** 交稿后必须真启动一次，`tsc` 过不算数（两边都是 `any` / 结构兼容时它查不出来）。
+- **教训二：白屏类问题的第一件事是抓异常，不是看 DOM。** DOM 是空的，什么线索都没有。为此写了 `scripts\cdp-errors.mjs`（附加 CDP → `Runtime.enable` + `Log.enable` → `Page.reload` → 打印 `Runtime.exceptionThrown` / `console.error` / `Log.entryAdded`），一跑就抓到那行 `TypeError`。
+- 修法：契约方法名统一成 `listSystemFonts`（channel 名 `api:fonts-system` 不动），并在那段 `useEffect` 外面包 try/catch + 注释写明为什么。
+
+### 字体功能的实机验证（在一次性 profile 上做，不动 desktop）
+
+复了 `desktop` 的 `cordis.patch.yml` 成 `dsh-font-selftest`（`dependencies:{}` + `bundles:[]`），把 `settings.json` 的 `defaultProfile` 指过去，测完还原并删除。**绝不在用户的真 profile 上做写操作** —— 这条从第一轮验收沿用至今，一次都没破例。
+
+- 读取：`已读到 270 个系统字体（注册表）`（走 `reg.exe query`，不 spawn PowerShell）
+- 选字体 → 预览 → 应用：`textFontFamily：SimSun & NSimSun（新增）` → 落盘后 ui-theme 块里**只多一行**，别的条目零改动（`Compare-Object` 只差这一行 + 我故意加的外部标记行）
+- **并发冲突保护**：趁面板开着，从外部往文件里追加一行，再点「应用」→ 被拦下：`DSH 刚刚改过这个文件，插件台没有硬写。已重新读取文件，你选的字体还在，再点一次「应用」就会写进去。`，并且**第二次点真的写进去了** —— 这里我顺手改掉了子代理的一个逻辑不一致：它原来说「已重新读取，请再点一次」但重新读取会把草稿对齐到磁盘（用户选的字体被冲掉），于是「再点一次」其实无事可做。给 `load()` 加了 `keepDraft` 参数，只在冲突路径上传 true。
+- 恢复默认：两段确认（`恢复默认` → `确认恢复默认`），三个键被精确删掉，文件其余部分逐字节不变（除我加的标记行）。
+- 备份：每次写入前 `<profileDir>/.dsh-console/backup/cordis.patch.yml.<ISO>`，实测两次写入两份备份，大小都等于原文件。
+
+### 又一个探针坑：合成键盘事件测不出「Esc 分层关闭」
+
+我一开始用 `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))` 测「Esc 只关灯箱不关详情页」，结论是**详情页也被关掉了** —— 差点当成 bug 去改代码。真因是：合成事件是从 `document` 直接派发的，**不经过焦点元素**，React 挂在 `#root` 上的委托监听收不到，而挂在 `document` 上的监听又会误收。
+
+改用 CDP 的 `Input.dispatchKeyEvent` 发真键（新工具 `scripts\cdp-key.mjs`）之后，行为完全正确：**Esc 第一次只关灯箱、焦点回缩略图；第二次才关详情页、焦点回卡片**。**教训：测键盘交互别用合成事件，要么走 CDP Input，要么用真实的 keydown 派发到焦点元素上。**
+
+### 顺手修的小文案
+
+`FontPanel` 里「档里已有（第 N 行）/ 档里没有」的「档」太内部化，改成「补丁里已有（第 N 行）/ 补丁里没有」—— 用户看到的文件名是 `cordis.patch.yml`，界面上就该说「补丁」。
+
+
+---
+
+## 2026-11-06 第七批补：字体名乱码 + 字体面板贴边（Master 两条）
+
+### ① 字体名里一堆问号方块 —— `reg.exe` 的输出编码看「有没有控制台」
+
+现象：字体选择器里有一条 `?,????? Medium`，而 `Arial` 之类的英文名完全正常 —— 所以第一眼像是「个别字体坏了」。
+
+取证（同一个 exe、同一台机器、同一份注册表，两次结果不同）：
+
+| 从哪跑 | utf8 解的坏字符(U+FFFD) | gbk 解的坏字符 |
+|---|---|---|
+| pwsh 里的 node | 0 | 72 |
+| Electron 主进程（GUI，无控制台） | **88** | **0** |
+
+原因是 `reg.exe` 的 stdout 跟随**控制台输出代码页**：有控制台（pwsh，CP 936 且被测出是 UTF-8 行为）和没有控制台（Electron GUI 子进程）吐出的字节不一样。`src/main/engine/fonts.ts` 原来写死 `encoding: 'utf8'`，于是 `思源黑体` 被解成 4 个 U+FFFD（U+FFFD 在多数字体里渲染成方框/问号，正是用户看到的样子）。
+
+修法（`fonts.ts` 新增 `decodeConsoleText(buf, exe)`）：拿 buffer 自己解 —— 先按系统 OEM 代码页（`HKLM\SYSTEM\CurrentControlSet\Control\Nls\CodePage` 的 `OEMCP`，936→gbk / 950→big5 / 932→shift_jis / 949→euc-kr …，结果缓存），再用「U+FFFD 个数」在 `[oem, utf8, gbk, big5, shift_jis, euc-kr]` 里投票选最干净的那个，全都不干净才退到 latin1（无损字节映射，至少不丢字符）。不引第三方库，用 Node/Electron 自带 ICU 的 TextDecoder。
+
+实测：改前 274 条里 11 条带 U+FFFD，改后 **0 条**；`华文中宋` / `华文彩云` / `思源黑体 Medium` 全部正确，搜「黑体」能搜到。
+
+**教训**：Windows 命令行工具的输出编码不能靠「我在终端里看是好的」定论 —— **同一个进程有没有控制台会改变它吐什么字节**。凡是 GUI 进程里 spawn 出来的 Windows 自带工具（reg / wmic / ipconfig / net …），一律拿 buffer 自己解 + 用坏字符数投票。
+
+### ② 字体面板太靠左 —— 整页视图的三笔账得自己认领
+
+`.app__view` 是 **0 padding 的 flex 容器**，内边距/滚动/撑满宽度都由各个视图自己带（`.install`、`.logdrawer` 都带了）。字体面板第一版只写了 `display:flex; flex-direction:column`，漏了三条，后果：宽度停在内容宽度（实测 795px，而 view 是 1041px）、贴着侧边栏零间距、没有滚动容器。
+
+修法（`font-panel.css` 的 `.fp`）：补 `flex: 1 1 auto` + `min-height: 0` + `overflow-y: auto` + `padding: var(--sp-5) var(--sp-4) var(--sp-6)`。横向取 16px 是为了和上方 subbar 的 tab 左右对齐（实测内容左边界 x=285 = 269+16，与 tab 一致）。
+
+**教训**：这是这个项目第三次被同一类「简写/缺省」咬到（前两次是 `margin: t r b 0` 把 margin-left 写成 0、`--sp-*` 变量缺失导致 padding 静默失效）。新加一个整页视图时，先照抄 `.install` 的那四条（flex / min-height / overflow / padding），别从零写。
