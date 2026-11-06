@@ -279,7 +279,8 @@
 }
 
 .fpick__list {
-  max-height: 232px;
+  /* 232px 只能露出十行左右，字体一多就得一直滚；给到一屏够用的高度 */
+  max-height: 340px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;

@@ -719,3 +719,52 @@ ipcMain.handle(CH.registrySearch, ...) → catalogZh.annotateHits(await net.npmS
 修法（`font-panel.css` 的 `.fp`）：补 `flex: 1 1 auto` + `min-height: 0` + `overflow-y: auto` + `padding: var(--sp-5) var(--sp-4) var(--sp-6)`。横向取 16px 是为了和上方 subbar 的 tab 左右对齐（实测内容左边界 x=285 = 269+16，与 tab 一致）。
 
 **教训**：这是这个项目第三次被同一类「简写/缺省」咬到（前两次是 `margin: t r b 0` 把 margin-left 写成 0、`--sp-*` 变量缺失导致 padding 静默失效）。新加一个整页视图时，先照抄 `.install` 的那四条（flex / min-height / overflow / padding），别从零写。
+
+### 2026-11-06 第七批补②：字体列表「找不到我的字体、只显示前 60 个」
+
+用户报了两条（附一张 `CaskaydiaCove Nerd Font` 的截图）：**①我明明有这个字体，为什么列表里找不到？②怎么只显示前 60 个？我想看到电脑上有的字体。**
+
+#### ① 「找不到」的真根因：我们列的是注册表值名，那不是 CSS 家族名
+
+`fonts.ts` 原来读 `HKLM/HKCU\...\Fonts`，把**注册表值名**当成字体名交给界面。值名是「安装时的全名」，一般带字重 / 字形后缀：
+
+```
+CaskaydiaMono NF Bold Italic (TrueType)      <- 注册表值名（旧代码列的）
+CaskaydiaMono NFM SemiBold (TrueType)
+CaskaydiaMono NFP ExtraLight (TrueType)
+```
+
+而**CSS 只认家族名**。用 canvas 量宽 + 和「不存在的家族」对比实测（`scripts/_probe-cssfamily.js`）：
+
+| 写进 font-family | 命中 |
+|---|---|
+| `CaskaydiaMono NF` | ✅ |
+| `CaskaydiaMono Nerd Font` | ✅ |
+| `CaskaydiaMono Nerd Font Mono` / `Propo` | ✅ |
+| `CaskaydiaMono NF Bold Italic` | ❌（等于写了个不存在的字体） |
+
+所以旧列表里 274 条**大半选了也没用**，而且注册表值名里**根本没有「Nerd」这个词** —— 用户搜「Nerd」「CaskaydiaCove」一律 0 条命中。这就是「我明明有这个字体却找不到」。
+
+修法：新增 `readFontFamilyNames(file)` —— 直接解析字体文件的 `name` 表（只读文件头 + 表目录 + name 表三小段，几 KB）。取名规则：
+
+1. **有 nameID 16（Typographic Family）就用 16，完全不看 nameID 1**。16 是「一个字体家族」的名字，把 Bold/Italic 这些字重收敛掉；1 是每个字重各自的 legacy 家族（`CaskaydiaMono NFM SemiBold`…），放进来就是噪音。没有 16 的老字体（Arial、宋体）才退回 1。
+2. **英文名 + 中文名都给**（0x0409 / 0x0804）。第一版只取英文名，结果中文名全没了（`cjkCount: 0`）—— 中文系统上用户找的是「微软雅黑」「思源黑体」，只给英文名等于把一半字体藏起来。两个名字 CSS 都能命中，所以是两条并列条目。
+3. 读不到文件的（274 条里 12 条，多为 `.fon` 位图字体）退回注册表值名。
+
+实测：**274 条注册表项 → 143 个家族**（中文名 23 个），耗时 **57ms**，进程内缓存 10 分钟不变。`CaskaydiaMono Nerd Font` / `… Mono` / `… Propo` / `MartianMono Nerd Font` 等 6 个 Nerd Font 家族全部出现，搜「nerd」6 条、搜「cask」3 条。
+
+参数：`decodeNameString` 里 **platform 0/3 是大端 UTF-16** —— Node 只有 `utf16le`，所以要先 `Buffer.swap16()` 再解（我第一版直接 `toString('utf16le')`，解出来是「䌀愀猀欀…」这种鬼东西，一眼就知道字节序错了）。TTC 集合要先读 `ttcf` 头取第一个字体的偏移。
+
+#### ② 「只显示前 60 个」：上限本来就该按「装得下」给
+
+`FontPanel.tsx` 的 `LIST_LIMIT = 60`，多出来的只在计数行写「显示前 60 / 匹配 274 个，继续输入缩小范围」。用户要的是**看见本机有什么**，不是被催着打字。改成 `600`（够装下任何一台普通机器），`.fpick__list` 的 `max-height` 232px → 340px。实测 143 条全部渲染、盒子 340px、scrollHeight 3825（可滚）。
+
+#### ③ 顺带查清：这台机器上**没有** `CaskaydiaCove Nerd Font`
+
+- 注册表：HKLM 217 条 + HKCU 56 条，含 `Cove` 的 **0 条**（含 `Nerd` 的 54 条，全是 CaskaydiaMono / MartianMono）。
+- 磁盘：`C:\Windows\Fonts` + `%LOCALAPPDATA%\Microsoft\Windows\Fonts` 里 `*Cask*` 只有 36 个 `CaskaydiaMonoNerdFont*`；`Downloads` / `Documents` / `Desktop` 递归三代 **0 个** Caskaydia 文件（连压缩包都没有）。
+- 家族名层面（新解析出来的 143 个）里匹配 `cove` 的结果为空。
+
+结论：用户手上是 **CaskaydiaMono** Nerd Font（+ MartianMono Nerd Font），`CaskaydiaCove Nerd Font` 是另一个家族（字形比例版），他截图里那个大概是网页 / README 上的字体展示。要装的话得从 nerd-fonts 的 release 下 `CaskaydiaCove.zip` 再装。
+
+**教训**：**「系统里有哪些字体」这件事，注册表给的是「安装记录」，字体文件才给「CSS 能用的名字」**。凡是把系统信息交给 CSS / 渲染层用的地方，都要拿渲染层真能匹配的标识（家族名），而不是安装记录里的显示名 —— 这类错会表现成「列表里全是选了没反应的东西」，用户只会说「找不到我的字体」。验证手段也很简单：**canvas 量同一串字的宽度，和不存在的家族对比**，比读文档猜靠谱。

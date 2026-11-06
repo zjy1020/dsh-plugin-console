@@ -25,10 +25,14 @@
 
 import { execFileSync } from 'node:child_process'
 import {
+  closeSync,
   copyFileSync,
+  existsSync,
   mkdirSync,
+  openSync,
   readFileSync,
   readdirSync,
+  readSync,
   renameSync,
   rmSync,
   statSync,
@@ -1121,20 +1125,142 @@ function decodeConsoleText(buf: Buffer, exe: string): string {
 }
 
 /**
- * 读注册表里的字体表。
+ * 解 name 表里的字符串。Windows / Unicode 平台是**大端** UTF-16（Node 只有 utf16le，
+ * 所以先 swap16 再解），Mac 平台按 latin1 兜。
+ */
+function decodeNameString(platform: number, raw: Buffer): string | null {
+  let text: string
+  if (platform === 0 || platform === 3) {
+    const even = raw.length % 2 === 0 ? raw : raw.subarray(0, raw.length - 1)
+    text = Buffer.from(even).swap16().toString('utf16le')
+  } else if (platform === 1) {
+    text = raw.toString('latin1')
+  } else {
+    return null
+  }
+  const value = text.replace(/\0/g, '').trim()
+  return value === '' ? null : value
+}
+
+/**
+ * 从字体文件的 name 表里读出**家族名**（TTF / OTF / TTC 都走这条）。
+ *
+ * ★ 为什么非得读文件，而不是直接用注册表的值名：
+ *   注册表值名是「安装时的全名」，通常带字重 / 字形后缀，而 CSS 只认**家族名**。
+ *   现场实测（canvas 量同一串字的宽度，和不存在的家族对比）：
+ *     "CaskaydiaMono NF"              命中
+ *     "CaskaydiaMono Nerd Font"       命中
+ *     "CaskaydiaMono NF Bold Italic"  命中不了（等于写了个不存在的字体）
+ *   注册表里写的正是第三种。用户装的 Nerd Font 在面板里搜「Nerd」一条都搜不到，
+ *   根因就在这 —— 注册表值名里根本没有「Nerd」，家族名只写在字体文件里。
+ *
+ * ★ 取名规则（274 条注册表项 → 143 个名字，实测 57ms）：
+ *   1. **有 nameID 16（Typographic Family）就用它，完全不看 nameID 1**。
+ *      16 是「一个字体家族」的名字，能把 Bold / Italic 这些字重收敛掉；而 1 是
+ *      每个字重各自的 legacy 家族（CaskaydiaMono NFM SemiBold…），放进来就是噪音。
+ *      只有没有 16 的字体（Arial、宋体这些老字体）才退回 1。
+ *   2. **英文名 + 中文名都给**（0x0409 / 0x0804）。中文系统上 DSH 自己的字体设置里
+ *      写的就是「微软雅黑」这种中文名，只给英文名等于把中文用户的一半字体藏起来。
+ *      两个名字 CSS 都能命中，所以它们是两条并列条目，不是别名。
+ *   3. 读不到文件（12 个，多为 .fon 位图字体）由调用方退回注册表值名。
+ *
+ * 只读文件头 + 表目录 + name 表三小段（几 KB），不整份读。
+ */
+function readFontFamilyNames(file: string): string[] {
+  let fd: number | undefined
+  try {
+    fd = openSync(file, 'r')
+    const hdr = Buffer.alloc(12)
+    if (readSync(fd, hdr, 0, 12, 0) < 12) return []
+    let base = 0
+    if (hdr.toString('latin1', 0, 4) === 'ttcf') {
+      // TTC 集合：取第一个字体的偏移（表目录里的偏移是相对文件开头算的）
+      const head = Buffer.alloc(16)
+      if (readSync(fd, head, 0, 16, 0) < 16) return []
+      base = head.readUInt32BE(12)
+      if (readSync(fd, hdr, 0, 12, base) < 12) return []
+    }
+    const numTables = hdr.readUInt16BE(4)
+    if (!numTables || numTables > 512) return []
+    const dir = Buffer.alloc(numTables * 16)
+    if (readSync(fd, dir, 0, dir.length, base + 12) < dir.length) return []
+    let off = 0
+    let len = 0
+    for (let i = 0; i < numTables; i += 1) {
+      const rec = dir.subarray(i * 16, i * 16 + 16)
+      if (rec.toString('latin1', 0, 4) === 'name') {
+        off = rec.readUInt32BE(8)
+        len = rec.readUInt32BE(12)
+        break
+      }
+    }
+    if (!off || !len || len > 2 * 1024 * 1024) return []
+    const tbl = Buffer.alloc(len)
+    if (readSync(fd, tbl, 0, len, off) < len) return []
+    const count = Math.min(tbl.readUInt16BE(2), 4096)
+    const strOff = tbl.readUInt16BE(4)
+    // id -> 语言码 -> 名字（Windows 平台）；id -> 名字（其它平台的兜底）
+    const langs = new Map<number, Map<number, string>>()
+    const loose = new Map<number, string>()
+    for (let i = 0; i < count; i += 1) {
+      const p = 6 + i * 12
+      if (p + 12 > tbl.length) break
+      const platform = tbl.readUInt16BE(p)
+      const language = tbl.readUInt16BE(p + 4)
+      const id = tbl.readUInt16BE(p + 6)
+      if (id !== 1 && id !== 16) continue
+      const l = tbl.readUInt16BE(p + 8)
+      const o = tbl.readUInt16BE(p + 10)
+      const value = decodeNameString(platform, tbl.subarray(strOff + o, strOff + o + l))
+      if (!value) continue
+      if (platform === 3) {
+        let bucket = langs.get(id)
+        if (!bucket) {
+          bucket = new Map<number, string>()
+          langs.set(id, bucket)
+        }
+        if (!bucket.has(language)) bucket.set(language, value)
+      } else if (!loose.has(id)) {
+        loose.set(id, value)
+      }
+    }
+    const english = (id: number) => langs.get(id)?.get(0x0409) ?? loose.get(id) ?? null
+    const chinese = (id: number) => langs.get(id)?.get(0x0804) ?? langs.get(id)?.get(0x0404) ?? null
+    const out: string[] = []
+    const push = (v: string | null) => {
+      if (v && !out.includes(v)) out.push(v)
+    }
+    if (english(16) || chinese(16)) {
+      push(english(16))
+      push(chinese(16))
+    } else {
+      push(english(1))
+      push(chinese(1))
+    }
+    return out
+  } catch {
+    return []
+  } finally {
+    if (fd !== undefined) closeSync(fd)
+  }
+}
+
+/**
+ * 读注册表里的字体表：值名（安装全名）+ 值数据（字体文件路径，HKLM 常常只是文件名）。
  *
  * 用 reg.exe（不是 PowerShell：后者起进程要几百毫秒还依赖执行策略）。它是同步调用，
- * 所以结果在进程内缓存 10 分钟 —— 字体列表是「装一次系统才变一次」的东西，不值得
- * 每次开面板都去问一次注册表。读不到（被拦 / 超时）返回空数组，交给上层退化。
+ * 结果在进程内缓存 10 分钟 —— 字体列表是「装一次系统才变一次」的东西。读不到返回空
+ * 数组，交给上层退化。
  */
-function readRegistryFontNames(): string[] {
+function readRegistryFontEntries(): Array<{ display: string; file: string | null }> {
   if (process.platform !== 'win32') return []
   const exe = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'reg.exe')
+  const winFonts = join(process.env.SystemRoot ?? 'C:\\Windows', 'Fonts')
   const keys = [
     'HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts',
     'HKCU\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts',
   ]
-  const out: string[] = []
+  const out: Array<{ display: string; file: string | null }> = []
   for (const key of keys) {
     let text = ''
     try {
@@ -1151,10 +1277,16 @@ function readRegistryFontNames(): string[] {
     }
     for (const line of text.split(/\r?\n/)) {
       // 值行形如「    Arial (TrueType)    REG_SZ    arial.ttf」
-      const m = /^\s{2,}(\S.*?)\s{2,}REG_[A-Z_]+\b/.exec(line)
+      const m = /^\s{2,}(.+?)\s{2,}REG_[A-Z_]+\s*(.*)$/.exec(line)
       if (!m) continue
-      const name = cleanFontName(m[1] as string)
-      if (name) out.push(name)
+      const display = m[1] as string
+      const data = (m[2] ?? '').trim()
+      let file: string | null = null
+      if (data && !/^REG_/.test(data)) {
+        const candidate = isAbsolute(data) ? data : join(winFonts, data)
+        if (existsSync(candidate)) file = candidate
+      }
+      if (cleanFontName(display)) out.push({ display, file })
     }
   }
   return out
@@ -1174,18 +1306,31 @@ function readFontDirNames(): string[] {
 
 let fontCache: SystemFontsResult | null = null
 
-/** 枚举系统字体家族名（注册表优先，退化到字体目录），进程内缓存 10 分钟 */
+/** 枚举系统字体家族名（家族名读自字体文件的 name 表，退化到字体目录），进程内缓存 10 分钟 */
 export function listSystemFonts(force = false): SystemFontsResult {
   if (!force && fontCache && Date.now() - fontCache.scannedAt < FONT_CACHE_MS) return fontCache
 
-  const fromReg = readRegistryFontNames()
-  const raw = fromReg.length > 0 ? fromReg : readFontDirNames()
+  const fromReg = readRegistryFontEntries()
+  const raw: string[] = []
+  let fromFile = 0
+  for (const entry of fromReg) {
+    const names = entry.file ? readFontFamilyNames(entry.file) : []
+    if (names.length > 0) {
+      fromFile += 1
+      for (const name of names) raw.push(name)
+      continue
+    }
+    // 读不到 name 表（多为 .fon 位图字体）：退回注册表值名，聊胜于无
+    const shown = cleanFontName(entry.display)
+    if (shown) raw.push(shown)
+  }
+  const fromDir = raw.length > 0 ? [] : readFontDirNames()
   const source: SystemFontsResult['source'] =
-    fromReg.length > 0 ? 'registry' : raw.length > 0 ? 'fontdir' : 'none'
+    raw.length > 0 ? 'registry' : fromDir.length > 0 ? 'fontdir' : 'none'
 
   const seen = new Set<string>()
   const fonts: string[] = []
-  for (const name of raw) {
+  for (const name of raw.length > 0 ? raw : fromDir) {
     const k = name.toLowerCase()
     if (seen.has(k)) continue
     seen.add(k)
@@ -1195,7 +1340,7 @@ export function listSystemFonts(force = false): SystemFontsResult {
 
   const note =
     source === 'registry'
-      ? `从注册表读到 ${fonts.length} 个字体家族（HKLM + HKCU 合并去重）`
+      ? `从 ${fromReg.length} 条注册表项读到 ${fonts.length} 个字体家族（字体文件里解析出家族名的有 ${fromFile} 个）`
       : source === 'fontdir'
         ? `读注册表失败，已退化成扫 %WINDIR%\\Fonts 的文件名（${fonts.length} 项，不是家族名，可能搜不到想要的字体）`
         : '既读不到注册表也扫不到字体目录，请手动输入字体名'
@@ -1203,7 +1348,6 @@ export function listSystemFonts(force = false): SystemFontsResult {
   fontCache = { fonts, source, count: fonts.length, scannedAt: Date.now(), note }
   return fontCache
 }
-
 /** 让下一次 listSystemFonts 重新扫描（面板上的「重新扫描」用） */
 export function clearSystemFontsCache(): void {
   fontCache = null

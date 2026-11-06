@@ -123,7 +123,15 @@ const ROLES: RoleSpec[] = [
 ]
 
 const RESET_ARM_MS = 6000
-const LIST_LIMIT = 60
+/**
+ * 下拉里最多渲染几条。
+ *
+ * ★ 原来是 60，被用户当场抓到：「还是只显示前 60 个，我想显示的是我电脑有的字体」——
+ *   60 条对一台装了 Nerd Font 的机器远远不够（这台 119 个家族，前 60 个里根本没有
+ *   他找的那款），而列表本身已经带了 max-height + 滚动，多渲染几十条没有代价。
+ *   现在按「够装下任何一台普通机器的全部字体」给，真超出了也有下面的计数行兜底。
+ */
+const LIST_LIMIT = 600
 
 /** 空串 = 交给 DSH 用内置栈（写文件时等于把这个键删掉） */
 const forWrite = (v: string): string | null => (v.trim() === '' ? null : v.trim())
@@ -270,7 +278,7 @@ export default function FontPanel({ profile, api: apiProp, onChanged }: FontPane
 
   const fontsLabel = fonts
     ? fonts.source === 'registry'
-      ? `已读到 ${fonts.count} 个系统字体（注册表）`
+      ? `已读到 ${fonts.count} 个字体家族（注册表 + 字体文件）`
       : fonts.source === 'fontdir'
         ? `已读到 ${fonts.count} 个字体（字体目录）`
         : '没能读到系统字体列表，可直接手输字体名'
@@ -481,7 +489,7 @@ function FontPicker({ value, fonts, disabled, onChange }: FontPickerProps) {
             {list.total > list.shown.length
               ? `显示前 ${list.shown.length} / 匹配 ${list.total} 个，继续输入缩小范围`
               : `匹配 ${list.total} 个`}
-            {fonts ? `（系统共 ${fonts.count} 个）` : ''}
+            {fonts ? `（本机共 ${fonts.count} 个家族）` : ''}
           </div>
         </div>
       ) : null}
