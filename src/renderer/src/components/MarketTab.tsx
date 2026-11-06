@@ -18,6 +18,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type Keyboard
 import type { MarketEntry, MarketList, VersionOption } from '../../../shared/types'
 import { api, toMessage, useDebouncedValue } from '../api'
 import { useConsole } from '../lib/store'
+import { marketSpecOf } from '../lib/marketSpec'
 import { EmptyState } from './EmptyState'
 import { PluginIcon, monogramOf } from './PluginIcon'
 import PluginGallery from './PluginGallery'
@@ -120,7 +121,13 @@ function MktIcon({
   installed: boolean
 }) {
   const pkg = entry.npm ?? entry.name
-  const { src, onFailed } = useEntryIcon(entry)
+  const { src, kind, onFailed } = useEntryIcon(entry)
+
+  // 本机真装过这个包时，本地包里的图标才是正主。头像只是「插件自己仓库里没图」时的
+  // 兜底，不该让它盖掉本机包自带的图标（声明地址和猜出来的地址仍然优先）。
+  if (installed && kind === 'avatar') {
+    return <PluginIcon profile={profile} name={pkg} size={size} radius={Math.round(size / 4)} className="mkt__icon" />
+  }
 
   if (src) {
     return (
@@ -159,6 +166,20 @@ function repoOf(url: string | null | undefined): string | null {
   const repo = m[2].replace(/\.git$/, '')
   if (!m[1] || !repo || repo === 'tree') return null
   return `${m[1]}/${repo}`
+}
+
+/**
+ * 条目属于哪个 GitHub 账号 —— 插件自己仓库里没图时，拿它的头像当兜底。
+ * 优先信仓库地址里的第一段（那一定是账号名），退回目录给的 owner 字段，
+ * 但只认像 GitHub 登录名的写法（字母数字加连字符），别的（邮箱、显示名）宁可不猜。
+ */
+function ownerOf(repo: string | null, owner: string | null | undefined): string | null {
+  if (repo) {
+    const first = repo.split('/')[0]
+    if (first) return first
+  }
+  const o = typeof owner === 'string' ? owner.trim() : ''
+  return /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(o) ? o : null
 }
 
 /**
@@ -206,46 +227,55 @@ const ICON_SUB_ROOT_FALLBACK = 4
 /* ------------------------------------------------------------------ *
  * 图标探测队列
  *
- * 猜图标只能靠 <img> 的 load/error 一个个试（renderer 的 connect-src 只有 'self'，fetch 会 Failed
- * to fetch），一屏几十张卡同时开 9 个候选会把网络连接和渲染都拖住（实测滚一格要十几秒）。
- * 所以这里收成一个全局小队列：
- *   · 同时在飞的探测最多 4 个
- *   · 单个候选 2.5 秒不回来就算失败，换下一个
- *   · 结果按仓库地址缓存，同一个仓库只探一次
- *   · 队列排太长就直接放弃（卡片退回首字母，不影响用）
+ * 找图只能靠 <img> 的 load/error 一个个试（renderer 的 connect-src 只有 'self'，fetch 会 Failed
+ * to fetch），一屏几十张卡同时开一堆候选会把网络连接和渲染都拖住（实测滚一格要十几秒）。
+ * 偏偏这两件事的代价差得很远，所以给它们**两条独立的队列**：
+ *
+ *   头像队列：一次请求（github.com/<owner>.png → 302 到 CDN 上的 2 KB 小图），快、几乎必中，
+ *            是「每张卡都得有图」的底。给它自己的一份额度，绝不被猜路径挤掉 ——
+ *            之前共用一条队列时，一屏 48 张卡会把 24 个位置全占满，结果连头像都排不进去，
+ *            屏幕上照样整片首字母。
+ *   猜图队列：一个仓库最多试 10 个候选（单个 2.5 秒超时），慢、命中率天生就低，
+ *            所以并发压到 4、排队上限 24，排不上就算了（头像已经在那儿了）。
+ * 两条队列各自按 key 缓存结果，同一个仓库/账号只探一次。
  * ------------------------------------------------------------------ */
 
 const ICON_PROBE_CONCURRENCY = 4
-const ICON_CANDIDATE_TIMEOUT_MS = 2500
 const ICON_PROBE_QUEUE_MAX = 24
+const AVATAR_PROBE_CONCURRENCY = 6
+const AVATAR_QUEUE_MAX = 240
+const ICON_CANDIDATE_TIMEOUT_MS = 2500
 
-/** 仓库地址 → 探到的图标 URL（null = 试完所有候选都没有），以及正在探的同一个仓库 */
-const iconCache = new Map<string, string | null>()
-const iconPending = new Map<string, Promise<string | null>>()
-
-const iconQueue: (() => Promise<unknown>)[] = []
-let iconActive = 0
-
-function pumpIconQueue(): void {
-  while (iconActive < ICON_PROBE_CONCURRENCY && iconQueue.length > 0) {
-    const task = iconQueue.shift()
-    if (!task) break
-    iconActive += 1
-    void task().finally(() => {
-      iconActive -= 1
-      pumpIconQueue()
+/** 一个带并发上限与排队上限的小队列；队列太长返回 null（这次不探） */
+function createProbeQueue(concurrency: number, max: number) {
+  const jobs: (() => Promise<unknown>)[] = []
+  let active = 0
+  const pump = (): void => {
+    while (active < concurrency && jobs.length > 0) {
+      const task = jobs.shift()
+      if (!task) break
+      active += 1
+      void task().finally(() => {
+        active -= 1
+        pump()
+      })
+    }
+  }
+  return <R,>(job: () => Promise<R>): Promise<R> | null => {
+    if (jobs.length >= max) return null
+    return new Promise<R>((resolve) => {
+      jobs.push(async () => resolve(await job()))
+      pump()
     })
   }
 }
 
-/** 排队执行；队列太长返回 null（这次不探） */
-function enqueueIconProbe<R>(job: () => Promise<R>): Promise<R> | null {
-  if (iconQueue.length >= ICON_PROBE_QUEUE_MAX) return null
-  return new Promise<R>((resolve) => {
-    iconQueue.push(async () => resolve(await job()))
-    pumpIconQueue()
-  })
-}
+const iconProbeSlot = createProbeQueue(ICON_PROBE_CONCURRENCY, ICON_PROBE_QUEUE_MAX)
+const avatarProbeSlot = createProbeQueue(AVATAR_PROBE_CONCURRENCY, AVATAR_QUEUE_MAX)
+
+/** 仓库地址 → 探到的图标 URL（null = 试完所有候选都没有），以及正在探的同一个仓库 */
+const iconCache = new Map<string, string | null>()
+const iconPending = new Map<string, Promise<string | null>>()
 
 /** 一个候选地址能不能当图加载（超时也算失败） */
 function tryIconUrl(url: string): Promise<boolean> {
@@ -282,7 +312,7 @@ function probeIcon(repo: string, sub: string | null): Promise<string | null> | n
       ]
     : ICON_CANDIDATES
 
-  const task = enqueueIconProbe<string | null>(async () => {
+  const task = iconProbeSlot<string | null>(async () => {
     for (const candidate of paths) {
       const url = `https://raw.githubusercontent.com/${repo}/HEAD/${candidate}`
       if (await tryIconUrl(url)) {
@@ -302,6 +332,41 @@ function probeIcon(repo: string, sub: string | null): Promise<string | null> | n
   return task
 }
 
+/**
+ * 探发布者头像：`github.com/<login>.png?size=96` 会 302 到 CDN 上的小图（约 2 KB），
+ * 比任何截图都轻。只在「声明地址 + 仓库里猜」都没中时才轮到它，
+ * 但它是最后一道有真图的防线 —— 有了它卡片不会整屏都是首字母。
+ * 负结果（确实没这个账号 / 拿不到）也缓存，同一个账号只探一次。
+ */
+const avatarCache = new Map<string, string | null>()
+const avatarPending = new Map<string, Promise<string | null>>()
+
+function probeAvatar(login: string): Promise<string | null> | null {
+  const cached = avatarCache.get(login)
+  if (cached !== undefined) return Promise.resolve(cached)
+  const pending = avatarPending.get(login)
+  if (pending) return pending
+
+  const candidates = [`https://github.com/${login}.png?size=96`, `https://avatars.githubusercontent.com/${login}`]
+  const task = avatarProbeSlot<string | null>(async () => {
+    for (const url of candidates) {
+      if (await tryIconUrl(url)) {
+        avatarCache.set(login, url)
+        return url
+      }
+    }
+    avatarCache.set(login, null)
+    return null
+  })
+  if (!task) return null
+
+  avatarPending.set(login, task)
+  void task.finally(() => {
+    if (avatarPending.get(login) === task) avatarPending.delete(login)
+  })
+  return task
+}
+
 function Monogram({ pkg, size }: { pkg: string; size: number }) {
   return (
     <span
@@ -315,38 +380,56 @@ function Monogram({ pkg, size }: { pkg: string; size: number }) {
 }
 
 /** 声明地址挂了、或者热更新换了条目，都从「没图」重新开始 */
-function useEntryIcon(entry: MarketEntry): { src: string | null; onFailed: () => void } {
+type IconKind = 'declared' | 'probed' | 'avatar'
+function useEntryIcon(entry: MarketEntry): { src: string | null; kind: IconKind | null; onFailed: () => void } {
   const declared = httpUrl(entry.icon)
   const repo = repoOf(entry.url)
   const sub = subdirOf(entry)
+  const login = ownerOf(repo, entry.owner)
   const [declaredFailed, setDeclaredFailed] = useState(false)
-  const [guessed, setGuessed] = useState<string | null>(null)
+  const [probed, setProbed] = useState<string | null>(null)
+  const [avatar, setAvatar] = useState<string | null>(null)
 
   useEffect(() => {
     setDeclaredFailed(false)
-    setGuessed(null)
+    setProbed(null)
+    setAvatar(null)
   }, [entry])
 
   const showDeclared = Boolean(declared) && !declaredFailed
 
-  // 没有可直接用的地址时，去队列里按仓库地址（带子目录就先在子目录里）猜，探到之前先显示首字母
+  /**
+   * 三级找图，压进两条队列（详见上面 createProbeQueue 那段）：
+   *   1. 目录声明的 icon —— 有就用，不探
+   *   2. 发布者头像 —— 一个请求、2 KB、几乎必中，**先把它填进格子**，卡片不许空着
+   *   3. 按仓库地址（带子目录就先在子目录里）猜常见位置 —— 慢，命中就升级成插件自己的图标
+   * 显示优先级始终是 声明 → 猜到的 → 头像，所以头像只是「先垫上」，真图标一到就换掉它。
+   */
   useEffect(() => {
-    if (showDeclared || !repo) return
+    if (showDeclared) return
     let alive = true
-    const running = probeIcon(repo, sub)
-    if (!running) return
-    void running.then((url) => {
-      if (alive && url) setGuessed(url)
-    })
+    if (login) {
+      void (probeAvatar(login) ?? Promise.resolve(null)).then((face) => {
+        if (alive && face) setAvatar(face)
+      })
+    }
+    if (repo) {
+      void (probeIcon(repo, sub) ?? Promise.resolve(null)).then((hit) => {
+        if (alive && hit) setProbed(hit)
+      })
+    }
     return () => {
       alive = false
     }
-  }, [showDeclared, repo, sub])
+  }, [showDeclared, repo, sub, login])
 
   if (showDeclared) {
-    return { src: declared, onFailed: () => setDeclaredFailed(true) }
+    return { src: declared, kind: 'declared', onFailed: () => setDeclaredFailed(true) }
   }
-  return { src: guessed, onFailed: () => setGuessed(null) }
+  if (probed) {
+    return { src: probed, kind: 'probed', onFailed: () => setProbed(null) }
+  }
+  return { src: avatar, kind: avatar ? 'avatar' : null, onFailed: () => setAvatar(null) }
 }
 
 function CardIcon({ entry, size }: { entry: MarketEntry; size: number }) {
@@ -646,14 +729,22 @@ export function MarketTab({ profile, onInstalled }: MarketTabProps) {
 
   const onInstall = async (entry: MarketEntry) => {
     if (busy || installing) return
-    const spec = entry.install || entry.npm || entry.name
+    // 目录给的 `install` 是整条命令行（`dsh plugin --profile web add x`），
+    // 交给 marketSpecOf 洗成真 spec；洗不出来就别往下走，免得又报「输入里有空格」
+    const spec = marketSpecOf(entry)
+    if (!spec) {
+      actions.toast('error', `目录这条没给能用的安装地址（${entry.name}），点「打开仓库」自己看一眼`)
+      return
+    }
     const installedNow = isInstalled(entry)
     setInstalling(entry.name)
     try {
       const res = await actions.installSpec(spec, profile, {
         normalized: spec,
         name: pkgOf(entry),
-        version: entry.version ?? null,
+        // 目录里的 version 是它收录时的快照，不是这次真要装的版本（实际拿的是 registry / 仓库上的最新），
+        // 直接写进去会变成「说要装 11.3.0，装出来是 11.4.1」。spec 本身钉死了版本/引用时就不用这句。
+        version: /@\d+\.\d+\.\d+|#.+$/.test(spec) ? null : '最新版',
         isDshPlugin: null,
         alreadyInstalled: installedNow ? (entry.version ?? '已装') : null
       })
@@ -901,7 +992,7 @@ export function MarketTab({ profile, onInstalled }: MarketTabProps) {
                           className="btn btn--sm btn--primary"
                           disabled={busy || installing !== null}
                           onClick={() => void onInstall(entry)}
-                          title={`pnpm 安装 ${entry.install || entry.npm || entry.name} 到 ${profile}（会先弹确认框）`}
+                          title={`pnpm 安装 ${marketSpecOf(entry)} 到 ${profile}（会先弹确认框）`}
                         >
                           {installing === entry.name ? <span className="spinner spinner--sm" aria-hidden="true" /> : null}
                           安装
@@ -985,7 +1076,7 @@ export function MarketTab({ profile, onInstalled }: MarketTabProps) {
                   className="btn btn--primary"
                   disabled={busy || installing !== null}
                   onClick={() => void onInstall(open)}
-                  title={`pnpm 安装 ${open.install || open.npm || open.name} 到 ${profile}（会先弹确认框）`}
+                  title={`pnpm 安装 ${marketSpecOf(open)} 到 ${profile}（会先弹确认框）`}
                 >
                   {installing === open.name ? <span className="spinner spinner--sm" aria-hidden="true" /> : null}
                   安装到 {profile}
@@ -1065,7 +1156,9 @@ export function MarketTab({ profile, onInstalled }: MarketTabProps) {
               </div>
               <div className="kv">
                 <span className="kv__k">安装 spec</span>
-                <span className="kv__v mono selectable">{open.install || open.npm || open.name}</span>
+                <span className="kv__v mono selectable" title={`目录原始给的是：${open.install || '（空）'}`}>
+                  {marketSpecOf(open) || '目录没给可用的安装地址'}
+                </span>
               </div>
               <div className="kv">
                 <span className="kv__k">仓库</span>

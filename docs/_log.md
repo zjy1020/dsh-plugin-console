@@ -500,3 +500,95 @@ if (pid === process.pid) continue
 3. 两者都对我们自己的图 → 一定是缓存，跑 `scripts\fix-icon-cache.ps1`
 
 **教训**：**图标链路上有三个不同的宿主（exe 资源 / 窗口 HICON / explorer 缓存），排查必须逐个取证，不能因为「我改了 setIcon」就认定问题在代码里。** 这次差点去改 `setIcon` 的调用时机 —— 那个改动是对的但不解决这个问题，会白改一轮再打包。
+
+---
+
+## 插件市场：卡片没图 + 装任何插件都报「输入里有空格」—— 两条都是我们自己的锅
+
+**Master 报的现象（原话）**：「1.我在插件市场安装的时候图片显示不出来 / 2.然后在插件市场安装某一个插件的时候显示有空格，都有，一个也装不上」。
+截图里三个「操作失败」toast，正文清一色是：
+
+```
+无法解析来源：输入里有空格，无法识别为包名或仓库地址：
+dsh plugin --profile web add dsh-dream-skin（本地路径请加 file:/link: 前缀）
+```
+
+### bug 2：目录里的 `install` 字段是一整条命令行，我们把它当 spec 直接传下去了
+
+**取证**：报错文案是我们自己写的 —— `src\main\engine\spec.ts` 里那段「输入里有空格…」；触发点是 `src\renderer\src\components\MarketTab.tsx` 的 `onInstall`：
+
+```ts
+const spec = entry.install || entry.npm || entry.name
+```
+
+而目录（`dsh-plugin-catalog` 的 `plugins.json`，9111 条）里 `install` 的真实内容长这样：
+
+```
+"install": "dsh plugin --profile web add dsh-dream-skin"
+"install": "dsh plugin --profile web add github:0xyxy/dsh-maid-atelier-tod"
+"install": "dsh plugin --profile web add @smalltailqwq/dsh-client-ui-skin-maid-atelier"
+```
+
+**那是目录作者为了在 README 里给人抄的完整命令**，里面那个 `--profile web` 也不是我们的 profile。整串带空格 → 被 spec 解析器挡在门口，**所以「一个也装不上」——所有卡都走这条路**。
+
+**修法**：新增 `src\renderer\src\lib\marketSpec.ts`，一条纯函数 `marketSpecOf(entry)` 做四级降级：
+
+1. `install` 字段 → 正则取 ` add ` 后面那一段（容忍引号，`\s+["'`]?([^\s"'`]+)["'`]?\s*$`）→ **结果里还带空格就返回 null，绝不把坏串交下去**；
+2. `npm` 字段；
+3. 由 `url` 推 `github:owner/repo`（`/tree/<ref>/<sub>` 形态 → `#<sub>`）；
+4. 兜底包名。
+
+`MarketTab.tsx` 里**凡是显示安装命令的地方（卡片按钮、详情按钮、详情「安装 spec」行、确认框）全部改走同一个函数** —— 界面写的必须就是实际传给 pnpm 的。
+
+**验证**：把 `marketSpec.ts` 单独 `tsc` 成 commonjs 跑了真实目录全量 9111 条 → **解析为空 0 条 / 结果仍含空格 0 条**（形态分布 npm 5581 + github 3530）；Master 报错的三条都拿到正确确认框；`dsh-dream-skin`（npm）和 `github:kingcharleslzy-ai/dsh-purge#v1.6.84`（git）都**真装成功**。
+
+**顺手修的文案 bug**：确认框标题原来用 `entry.version`（目录收录时的快照，11.3.0），而实装的是 registry 最新（11.4.1），改成「最新版」。
+
+### bug 1：卡片没图，是图标链覆盖率天生低 —— 加发布者头像兜底
+
+**先把网络排除干净**：渲染层 `new Image()` 打 `raw.githubusercontent.com` 和 `avatars.githubusercontent.com` 都是 200，`HEAD` 当 ref 也能用 → **不是 CSP、不是代理、不是网络**。
+
+**真相在数据里**：目录 9111 条里 `icon` 字段有值的只有 **763 条（8.4%）**，`screenshots` 有值 2132 条（23%）。星标前 12 名里只有 1 条声明了 `icon`；原来的「猜常见路径」链（`ICON_CANDIDATES`）实测只中 4 条，还全是 `dsh-web` 的 `packages/*/icon.svg`。所以**原来的卡有图上限就是 8%，首屏 48 张卡只有 2 张有图**，剩下全是首字母 monogram —— 这就是 Master 看到的「图片显示不出来」。
+
+**修法**：给图标链加第三级 —— 猜不到就取**发布者头像**（`https://github.com/<login>.png?size=96`，302 到 `avatars.githubusercontent.com`，2KB 级的小图，CDN 缓存，不动布局）。
+
+**这里踩了一个设计坑，值得记**：第一版把「猜图标」和「取头像」塞进**同一条并发队列**（上限 24）。结果一屏 48 张卡把 24 个位置全占满，头像**连排都排不进去**，实测屏幕照样整片首字母。改成**两条独立队列**（猜图 `4/24`、头像 `6/240`，`createProbeQueue` 工厂出两份），并让头像与猜图**并行发起**；显示优先级仍是「声明的 icon → 猜到的 → 头像」，头像先垫上、真图标一到就换。
+
+**验证**：首屏 48 张卡 `img 2 / mono 46` → **`img 48 / mono 0`**；滚一屏后 `img 32 / mono 0`；抽查 `naturalWidth` 都是 128/150/192/420/460 的真图；打包前留档 `docs\shots\bugfix-market-0{1,2,3}*.png`。
+
+### 顺带发现：目录里有死条目，而报错方向全错
+
+Master 报错里的第三条 `github:0xyxy/dsh-maid-atelier-tod`：
+
+- `git ls-remote` 走代理 → `remote: Repository not found`（直连 → `Connection was reset`）
+- 该条目在目录里 `★ 0 / ↓ —`，从来没人装过 → **是个已删除/改名的仓库**
+- 而 app 当时给的文案是「连不上 registry —— **网络或代理的问题**。到设置里测一下代理延迟」→ **方向全错，人会一直去折腾代理**
+
+**修法**：失败分类器里把「仓库不存在」提到网络分支**前面**：
+
+```ts
+if (/Repository not found|ERROR: Repository not found|repository .{0,160}not found/i.test(s)) {
+  return '这个 GitHub 仓库不存在（可能已改名或删除）—— 目录里的地址会过期，点条目里的「打开仓库」确认一下。'
+}
+```
+
+### 顺带查清：git 走不走代理（结论：这台机器本来就抖，不是我们没传代理）
+
+受控实验：用 DSH 自带 runtime 在临时目录跑 `pnpm add github:zjy1020/dsh-plugin-console`，四种 env 各一次：
+
+| env | 结果 |
+|---|---|
+| 无代理 | 34.1s **成功** |
+| 只给大写 `HTTP_PROXY/HTTPS_PROXY` | 17.2s **失败**（ECONNRESET） |
+| 小写 `http_proxy/https_proxy` + `npm_config_*` | 105.5s **成功** |
+| 大小写都给 + `GIT_CONFIG_*` 指 `http.proxy` | 3.5s **失败** |
+
+同一仓库、同一台机器，四种组合两种成功两种失败；`git ls-remote` 对**同一个**仓库直连报 reset、走代理报 Repository not found。**结论：GitHub 的 git 访问在这台机器上时通时断（GFW 抖动 + 代理不稳定），代码侧已经该传的都传了**：`env.ts` 的 `buildChildEnv()` 同时设了大小写 + `npm_config_*` + `NO_PROXY`，`ops.ts` 的 `childEnvFor()` 又把同样的键塞进官方通道的 `options.env`（`{...scrubbedParentEnv(), ...options.env}`，后者覆盖）。
+
+**教训：判断「代理有没有生效」不能看单次结果，得同一命令多跑几轮。**
+
+### 这轮的方法论收获
+
+- **确认框里能直接看出 bug**：bug 2 的真凶是在确认框正文里现形的 —— 「来源 `dsh plugin --profile web add @tt-a1i/archify-dsh`」「命令行等效：`pnpm add dsh plugin --profile web add @tt-a1i/archify-dsh`」。**把「界面写的」和「实际执行的」并排放在一个弹窗里，这类 bug 自己会跳出来。**
+- **改工程代码之前，先拿真实数据跑纯函数**：`marketSpec.ts` 是纯函数，单独 `tsc` 出来配 4 行脚本就能把整个目录 9111 条喂一遍，一秒拿到「解析为空 0 / 含空格 0」。比开界面点一百次快得多。
+- **数一下「有几张有图」比盯着截图看有用**：`img 2 / mono 46` 这个数字一眼就把「覆盖率问题」和「加载失败问题」分开了（加载失败会是 0/48 或者一半半）。

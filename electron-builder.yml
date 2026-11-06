@@ -10,6 +10,9 @@ files:
   - out/**/*
   - package.json
   - '!**/*.map'
+  # out/ 根目录偶尔会被别的会话写进一堆分析用中间产物（*.tsv / *.txt 之类），
+  # 它们和这个 app 一点关系都没有，但 files: out/**/* 会照单全收、打进安装包。
+  - '!out/**/*.{tsv,txt,csv,log}'
   - '!**/{.eslintrc,.editorconfig,.gitignore,README.md,docs,scripts}'
 
 asar: true

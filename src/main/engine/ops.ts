@@ -518,6 +518,11 @@ function explainPnpmError(log: string): string | null {
   if (/ERR_PNPM_FETCH_5\d\d/.test(s)) {
     return 'registry 那边出错了（5xx），不是你这边的问题，过一会儿再试。'
   }
+  // 「仓库根本没有」必须排在网络分支前面：目录里的地址有不少指向已改名/已删除的仓库，
+  // 一旦被归到「连不上 registry —— 网络或代理的问题」，人就会一直去折腾代理，方向全错。
+  if (/Repository not found|ERROR: Repository not found|repository .{0,160}not found/i.test(s)) {
+    return '这个 GitHub 仓库不存在（可能已改名或删除）—— 目录里的地址会过期，点条目里的「打开仓库」确认一下。'
+  }
   if (/ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNREFUSED|ECONNRESET|ERR_SOCKET_TIMEOUT/.test(s)) {
     return '连不上 registry —— 网络或代理的问题。到设置里测一下代理延迟。'
   }
