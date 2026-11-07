@@ -135,6 +135,8 @@ interface FinishOpts {
   message: string
   code?: number | null
   restartRequired?: boolean
+  /** 部分成功（见 OpResult.partial）：界面按「部分完成」报，不当整片红 */
+  partial?: boolean
 }
 
 function finish(ctx: Ctx, _hooks: OpHooks | undefined, opts: FinishOpts): OpResult {
@@ -149,6 +151,7 @@ function finish(ctx: Ctx, _hooks: OpHooks | undefined, opts: FinishOpts): OpResu
     changes: ctx.changes.slice(),
     message: opts.message,
     restartRequired: opts.restartRequired === true,
+    ...(opts.partial === true ? { partial: true } : {}),
     log: ctx.lines.join('\n')
   }
 }
@@ -255,7 +258,7 @@ async function runPnpmOp(ctx: Ctx, hooks: OpHooks | undefined, args: string[], t
 /**
  * runPnpmAddish —— 给「会触发安装的 pnpm 子命令」加一层自愈重试。
  *
- * 只处理两种「环境政策性」失败，都是 pnpm 11 默认替用户把关导致的，
+ * 只处理三种「环境政策性」失败，都是 pnpm 11 默认替用户把关导致的，
  * 不是用户输入错了：
  *   1. ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED
  *      → 往 <profile>/pnpm-workspace.yaml 的 allowBuilds 写精确 key 后重试。
@@ -263,6 +266,11 @@ async function runPnpmOp(ctx: Ctx, hooks: OpHooks | undefined, args: string[], t
  *      而那条 key 带完整 tarball URL，用户没法自己猜。
  *   2. ERR_PNPM_MINIMUM_RELEASE_AGE
  *      → 往 minimumReleaseAgeExclude 写 name@version 后重试。
+ *   3. ERR_PNPM_IGNORED_BUILDS
+ *      → 往 pnpm-workspace.yaml 写 `strictDepBuilds: false` 后重试。
+ *      这一条不是「装不上」，而是「装上了却报非零退出」：pnpm 因为树里有依赖带
+ *      未经批准的构建脚本，把一次成功的安装以退出码 1 收场。不修就会让用户看到
+ *      「一直显示安装失败，但是还是安装上了」。
  *
  * 每种最多修一次、整体最多重试两轮，避免和 pnpm 来回打乒乓。
  */
@@ -305,6 +313,34 @@ async function runPnpmAddish(
         run = await runPnpmOp(ctx, hooks, args, timeoutMs)
         continue
       }
+    }
+
+    /*
+     * 3. ERR_PNPM_IGNORED_BUILDS —— pnpm 拒绝执行某些依赖的构建脚本，于是把退出码
+     *    置成 1，但**包已经装好了**。不修的话：①包明明装上了却被报成失败
+     *    ②树里只要沾上这类依赖，之后每一次安装都会这样 —— 用户看到的就是
+     *    「一直显示安装失败，但是还是安装上了」。
+     *    我们只关掉「把提示升级成错误」这个门禁（strictDepBuilds: false），
+     *    构建脚本依然不会被执行。
+     */
+    const ignoredBuilds = profileYaml.parseIgnoredBuilds(run.log)
+    if (ignoredBuilds.length > 0 && !tried.has('strictDepBuilds')) {
+      tried.add('strictDepBuilds')
+      const fix = profileYaml.ensureStrictDepBuildsOff(ctx.profileDir)
+      if (fix.ok && fix.added.length > 0) {
+        logSystem(
+          ctx,
+          hooks,
+          `pnpm 因为「${ignoredBuilds.slice(0, 6).join('、')}${ignoredBuilds.length > 6 ? ` 等 ${ignoredBuilds.length} 个` : ''}」带构建脚本没被批准而退出非零（包其实装上了）。已在 ${fix.path} 写入 strictDepBuilds: false，关掉这个门禁（构建脚本仍然不会被执行），重试一次`
+        )
+        run = await runPnpmOp(ctx, hooks, args, timeoutMs)
+        continue
+      }
+      logSystem(
+        ctx,
+        hooks,
+        fix.ok ? 'strictDepBuilds 已经是 false 了，重试没有意义' : `写 strictDepBuilds 失败：${fix.error ?? '未知原因'}`
+      )
     }
 
     break
@@ -504,6 +540,28 @@ function explainPnpmError(log: string): string | null {
       : 'registry 上找不到这个包（或这个版本）—— 检查一下名字有没有打错。'
   }
   if (/ERR_PNPM_NO_MATCHING_VERSION|No matching version found/.test(s)) {
+    /*
+     * 实测原文（pnpm 11.28.5，2026-11-07）：
+     *   ERR_PNPM_NO_MATCHING_VERSION  No matching version found for
+     *   @deepseek-ai/dsh-session@>=0.2.2 <0.3.0-0 while fetching it from
+     *   https://registry.npmmirror.com/
+     *
+     * 两个 registry 上 @deepseek-ai/* 都**只有预发布版**（0.2.x 全是 rc / alpha），
+     * 而插件把要求写成正式版区间 → semver 的区间匹配不含预发布版 → 无解。
+     * 这是「插件要求的 DSH 运行时还没出正式版」，跟用户打错字完全不是一回事，
+     * 所以不能只说「这个版本不存在」。
+     */
+    const spec = /No matching version found for\s+(\S+?@[^\s]+)/i.exec(s)?.[1] ?? null
+    if (spec && /^@deepseek-ai\//.test(spec)) {
+      return (
+        `这个插件依赖 DSH 运行时的「${spec}」，而 registry 上没有满足这个范围的版本 —— ` +
+        'DSH 自己目前只有预发布版（0.2.x 全是 rc / alpha，semver 的区间匹配不含预发布版）。' +
+        '要等 DSH 出正式版，或者插件作者把版本范围放宽之后才能装。这不是你这边写错了什么。'
+      )
+    }
+    if (spec) {
+      return `找不到满足「${spec}」的版本 —— 可能是版本号写错了，或者这个版本已经被作者撤下（unpublish）。`
+    }
     return '这个版本不存在（可能已被撤销，或者名字对但版本号写错了）。'
   }
   if (/ERR_PNPM_MINIMUM_RELEASE_AGE/.test(s)) {
@@ -1044,6 +1102,7 @@ async function opInstall(ctx: Ctx, hooks: OpHooks | undefined, req: OpRequest): 
   /* 2. 备份 package.json */
   const backup = backupProfilePkg(ctx.profileDir)
   logSystem(ctx, hooks, backup ? `已备份 package.json → ${backup}` : 'package.json 不存在，跳过备份')
+  ensurePnpmBaseline(ctx, hooks)
 
   /* 3. before 快照 */
   const before = toSnapshot(await safeList(ctx.profile, ctx, hooks))
@@ -1058,14 +1117,35 @@ async function opInstall(ctx: Ctx, hooks: OpHooks | undefined, req: OpRequest): 
   logSystem(ctx, hooks, `开始安装：${parsed.normalized}`)
   const run = await runPnpmAddish(ctx, hooks, ['add', parsed.normalized])
 
-  /* 5. 失败 → 中文摘要 */
+  /* 5. 失败 → 先看磁盘再下结论 */
   if (run.code !== 0) {
-    const detail = run.timedOut
-      ? '安装超时，已终止'
-      : run.incompatible.length > 0
-        ? `与当前 dsh 运行时不兼容，官方已拒绝安装（profile 未被改动）`
-        : errorSummary(run.log)
-    return fail(ctx, hooks, `安装失败（exit ${String(run.code)}）：${detail}`, run.code)
+    /*
+     * 退出码非零 ≠ 没装上。pnpm 11 在树里存在「带构建脚本但没被批准」的依赖时，
+     * 会把一次成功的安装以退出码 1 收场（ERR_PNPM_IGNORED_BUILDS）。判据换成
+     * 磁盘：目标包在 node_modules 里、或者这次冒出了一个新的包，就算成功。
+     */
+    ctx.cached = null
+    const afterFail = toSnapshot(await safeList(ctx.profile, ctx, hooks))
+    const expected = parsed.packageName ?? null
+    const landed =
+      (expected && installedOnDisk(ctx.profileDir, expected).present ? expected : null) ??
+      [...afterFail.keys()].find((n) => !before.has(n)) ??
+      null
+
+    if (landed) {
+      logSystem(
+        ctx,
+        hooks,
+        `安装命令的退出码是 ${String(run.code)}，但 ${landed} 已经在磁盘上了（${installedOnDisk(ctx.profileDir, landed).version ?? '版本未知'}）—— 按实际状态算成功。pnpm 常把「有依赖带构建脚本没被批准」这类提示升级成非零退出，包本身没问题`
+      )
+    } else {
+      const detail = run.timedOut
+        ? '安装超时，已终止'
+        : run.incompatible.length > 0
+          ? `与当前 dsh 运行时不兼容，官方已拒绝安装（profile 未被改动）`
+          : errorSummary(run.log)
+      return fail(ctx, hooks, `安装失败（exit ${String(run.code)}）：${detail}`, run.code)
+    }
   }
 
   /* 6. after 快照 + diff */
@@ -1167,6 +1247,44 @@ function safeInstalledPkgJson(profileDir: string, name: string): any | null {
   }
 }
 
+/**
+ * 动依赖之前先把 DSH 自己会给 profile 写的 pnpm 基线补齐。
+ *
+ * 缺了 `autoInstallPeers: false` 的 profile 上，插件里写成 peer 的 `@deepseek-ai/dsh-*`
+ * 会被 pnpm 拿去 registry 找「正式版范围」，而 DSH 运行时只有预发布版 → 直接
+ * ERR_PNPM_NO_MATCHING_VERSION（实测：补上这两行后同样的三个包一个个装成功）。
+ * 只补缺的键，DSH / 用户已经写过的值一律不动。失败不影响后续安装。
+ */
+function ensurePnpmBaseline(ctx: Ctx, hooks: OpHooks | undefined): void {
+  try {
+    const added = profileYaml.ensurePnpmBaseline(ctx.profileDir)
+    if (added.length > 0) {
+      logSystem(ctx, hooks, `profile 缺 DSH 的 pnpm 基线配置，已补上：${added.join('、')}`)
+    }
+  } catch (err) {
+    logSystem(ctx, hooks, `补 pnpm 基线配置失败（不影响后面的安装）：${err instanceof Error ? err.message : String(err)}`)
+  }
+}
+
+/**
+ * 「这个包到底装上了没有？」—— 不信命令行的退出码，直接看磁盘。
+ *
+ * 为什么必须有这个函数（2026-11-07 真实事故）：pnpm 11 在树里存在「带构建脚本但
+ * 没被批准」的依赖时，会把一次**成功**的安装以退出码 1 收场，只打印
+ *   [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: node-pty@…, koffi@…
+ * 我们原来只看退出码，于是把已经装好的包全报成「安装失败」，而且这个错误会一直
+ * 复现 —— 用户看到的就是「一直显示安装失败，但是还是安装上了」。
+ *
+ * 判据只有一条：`node_modules/<name>/package.json` 在不在。package.json 的
+ * dependencies 里写了但 node_modules 里没有，说明没真正落地，仍算失败。
+ */
+function installedOnDisk(profileDir: string, name: string): { present: boolean; version: string | null } {
+  const pkg = safeInstalledPkgJson(profileDir, name)
+  if (!pkg) return { present: false, version: null }
+  const version = typeof pkg.version === 'string' && pkg.version !== '' ? pkg.version : null
+  return { present: true, version }
+}
+
 /* ------------------------------------------------------------------ *
  * uninstall
  * ------------------------------------------------------------------ */
@@ -1177,6 +1295,7 @@ async function opUninstall(ctx: Ctx, hooks: OpHooks | undefined, req: OpRequest)
 
   const backup = backupProfilePkg(ctx.profileDir)
   logSystem(ctx, hooks, backup ? `已备份 package.json → ${backup}` : 'package.json 不存在，跳过备份')
+  ensurePnpmBaseline(ctx, hooks)
 
   const before = toSnapshot(await safeList(ctx.profile, ctx, hooks))
   const bundlesBefore = bundlesSnapshot(ctx.profileDir)
@@ -1357,6 +1476,7 @@ async function opUpdate(
 
   const backup = backupProfilePkg(ctx.profileDir)
   logSystem(ctx, hooks, backup ? `已备份 package.json → ${backup}` : 'package.json 不存在，跳过备份')
+  ensurePnpmBaseline(ctx, hooks)
 
   const installArgs: string[] = []
   const touched: string[] = []
@@ -1445,12 +1565,33 @@ async function opUpdate(
     logSystem(ctx, hooks, `开始更新 ${touched.length} 个包：${touched.join('、')}`)
     let run = await runPnpmAddish(ctx, hooks, ['add', ...installArgs])
     if (run.code !== 0) {
-      const detail = run.timedOut
-        ? '更新超时，已终止'
-        : run.incompatible.length > 0
-          ? '新版本与当前 dsh 运行时不兼容，官方已拒绝更新（版本保持不变）'
-          : errorSummary(run.log)
-      return fail(ctx, hooks, `更新失败（exit ${String(run.code)}）：${detail}`, run.code)
+      /*
+       * 同 opInstall：退出码非零也可能是假失败（pnpm 的「未批准构建脚本」会把
+       * 成功收成非零）。磁盘上版本真的动了，就当这次更新成立。
+       */
+      ctx.cached = null
+      const afterFail = toSnapshot(await safeList(ctx.profile, ctx, hooks))
+      const moved = touched.filter((name) => {
+        const now = afterFail.get(name) ?? installedOnDisk(ctx.profileDir, name).version ?? null
+        const prev = before.get(name) ?? null
+        return now !== null && now !== prev
+      })
+
+      if (moved.length > 0) {
+        logSystem(
+          ctx,
+          hooks,
+          `更新命令的退出码是 ${String(run.code)}，但 ${moved.join('、')} 的版本确实变了 —— 按更新成功算（pnpm 会把「有依赖带构建脚本没被批准」这类提示升级成非零退出）`
+        )
+        run = { ...run, code: 0 }
+      } else {
+        const detail = run.timedOut
+          ? '更新超时，已终止'
+          : run.incompatible.length > 0
+            ? '新版本与当前 dsh 运行时不兼容，官方已拒绝更新（版本保持不变）'
+            : errorSummary(run.log)
+        return fail(ctx, hooks, `更新失败（exit ${String(run.code)}）：${detail}`, run.code)
+      }
     }
 
     /*
@@ -1540,6 +1681,7 @@ async function opToggle(
 
   const backup = backupProfilePkg(ctx.profileDir)
   logSystem(ctx, hooks, backup ? `已备份 package.json → ${backup}` : 'package.json 不存在，跳过备份')
+  ensurePnpmBaseline(ctx, hooks)
 
   /* 读一次 state，全程在内存里改，最后一次写盘 */
   let disabledMap: Record<string, number | null> = {}
@@ -1692,6 +1834,7 @@ async function opInstallManifest(
   /* 5. 备份 package.json */
   const backup = backupProfilePkg(ctx.profileDir)
   logSystem(ctx, hooks, backup ? `已备份 package.json → ${backup}` : 'package.json 不存在，跳过备份')
+  ensurePnpmBaseline(ctx, hooks)
 
   const bundlesBefore = bundlesSnapshot(ctx.profileDir)
 
@@ -1704,23 +1847,56 @@ async function opInstallManifest(
   const failed: Array<{ name: string; detail: string }> = []
 
   if (run.code !== 0) {
-    /* 批量失败 → 降级逐个装，尽量救回能装的 */
-    if (pv.specs.length > 1) {
+    /*
+     * 先别急着降级 —— 也可能「其实全都装上了」。
+     *
+     * pnpm 在树里存在「带构建脚本但没被批准」的依赖时，会把一次成功的安装收成
+     * 退出码 1（见 installedOnDisk 的注释）。这种情况下降级逐个装等于把同样的活
+     * 再干 N 遍（实测 15 个包白跑 112 秒），而且每个包都会被再报一次假失败。
+     */
+    const landed = pv.missing.map((entry) => ({ entry, disk: installedOnDisk(ctx.profileDir, entry.name) }))
+    const notLanded = landed.filter((x) => !x.disk.present)
+
+    if (notLanded.length === 0) {
+      logSystem(
+        ctx,
+        hooks,
+        `命令退出码是 ${String(run.code)}，但清单里的 ${pv.missing.length} 个包都已经在磁盘上了 —— 按实际状态算成功（pnpm 会把「有依赖带构建脚本没被批准」这类提示升级成非零退出，包本身没问题）`
+      )
+    } else if (pv.specs.length > 1) {
+      /* 批量失败 → 降级逐个装，尽量救回能装的 */
       logSystem(
         ctx,
         hooks,
         `批量安装失败（exit ${String(run.code)}）：${run.timedOut ? '安装超时，已终止' : errorSummary(run.log)}`
       )
+      if (landed.length > notLanded.length) {
+        logSystem(
+          ctx,
+          hooks,
+          `其中 ${landed.length - notLanded.length} 个其实已经在磁盘上了，只需要补装剩下 ${notLanded.length} 个`
+        )
+      }
       logSystem(ctx, hooks, '降级为逐个安装，能装的先装上')
 
-      for (let i = 0; i < pv.missing.length; i++) {
-        const entry = pv.missing[i]
-        if (!entry) continue
+      for (const { entry } of notLanded) {
         const specOne = manifest.specsOf([entry])[0] ?? entry.name
         logSystem(ctx, hooks, `逐个安装：${specOne}`)
         const one = await runPnpmAddish(ctx, hooks, ['add', specOne], 15 * 60 * 1000)
         official = official || one.official
         if (one.code === 0) continue
+
+        /* 退出码非零也可能是假失败，落盘状态说了算 */
+        const disk = installedOnDisk(ctx.profileDir, entry.name)
+        if (disk.present) {
+          logSystem(
+            ctx,
+            hooks,
+            `${entry.name} 的命令退出码是 ${String(one.code)}，但磁盘上已经有了（${disk.version ?? '版本未知'}）—— 按成功算`
+          )
+          continue
+        }
+
         const detail = one.timedOut
           ? '安装超时，已终止'
           : one.incompatible.length > 0
@@ -1748,11 +1924,23 @@ async function opInstallManifest(
   for (const entry of pv.missing) {
     if (failed.some((f) => f.name === entry.name)) continue
     if (!after.has(entry.name)) {
-      /* 装是装了，但没在 node_modules 里看到它 —— 也算失败，别谎报成功 */
-      failed.push({ name: entry.name, detail: '安装命令跑完了，但 node_modules 里没找到它' })
-      continue
+      /*
+       * 清单快照里没有它 —— 但不能立刻判失败：inventory 是走 patch / bundles 那套
+       * 逻辑聚合出来的，偶发读取异常（safeList 会把异常吞成空列表）也会让这里看不到。
+       * 落盘状态是最后一道真话。
+       */
+      const disk = installedOnDisk(ctx.profileDir, entry.name)
+      if (!disk.present) {
+        failed.push({ name: entry.name, detail: '安装命令跑完了，但 node_modules 里没找到它' })
+        continue
+      }
+      logSystem(
+        ctx,
+        hooks,
+        `${entry.name} 不在插件清单的快照里，但磁盘上确实有（${disk.version ?? '版本未知'}）—— 按成功算`
+      )
     }
-    const version = after.get(entry.name) ?? null
+    const version = after.get(entry.name) ?? installedOnDisk(ctx.profileDir, entry.name).version ?? null
     installedNames.push(entry.name)
     addChange(ctx, { name: entry.name, from: null, to: version, action: 'added' })
   }
@@ -1856,7 +2044,14 @@ async function opInstallManifest(
 
     const message =
       `清单导入：${installedNames.length} 个装好，${failed.length} 个失败（${shown}${rest}）`
-    return finish(ctx, hooks, { ok: false, code: run.code ?? 1, message, restartRequired: true })
+    return finish(ctx, hooks, {
+      ok: false,
+      /* 部分成功：界面按「部分完成」报，别把装好的那批一起打成红色失败 */
+      partial: installedNames.length > 0,
+      code: run.code ?? 1,
+      message,
+      restartRequired: true
+    })
   }
 
   const loadedText =

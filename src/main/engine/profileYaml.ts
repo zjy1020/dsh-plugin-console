@@ -287,6 +287,104 @@ function ensureSequence(profileDir: string, text: string, key: string, values: s
   }
 }
 
+/**
+ * 关掉 pnpm 的「未批准构建脚本」硬失败。
+ *
+ * 起因（2026-11-07，Master 在朋友机器上导入清单）：装了带原生构建脚本的依赖之后
+ * （node-pty / koffi / cloudflared / protobufjs …），pnpm 11 会把每次安装的退出口
+ * 变成 1：
+ *   [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: node-pty@1.2.0-beta.15, …
+ *   Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.
+ * 而包**其实已经装好了**（dependencies 段照常写、node_modules 照常有）。我们只看
+ * 退出码，于是把装成功的包全报成「安装失败」，而且这个错误会一直复现 —— 用户看到的
+ * 就是「一直显示安装失败，但是还是安装上了」。
+ *
+ * 为什么是写 `strictDepBuilds: false` 而不是批准那些构建脚本：
+ *   - 我们只关掉「把提示升级成错误」这个门禁，**构建脚本依然不会被执行**（pnpm 仍然
+ *     只打印一行 Ignored build scripts）。安全性不变，只是不再假装失败。
+ *   - 实测（pnpm 11.28.5）：`strictDepBuilds: false` 写进 profile 的
+ *     pnpm-workspace.yaml → 退出码 0；而 `.npmrc` 里的 `strict-dep-builds=false`
+ *     **无效**（exit 仍 1），单独写 `ignoredBuiltDependencies: [名字]` 也无效
+ *     （pnpm config 能读到，但报错照旧）。
+ *
+ * 这是顶层标量键，与 allowBuilds / minimumReleaseAgeExclude 同级。
+ */
+export function ensureStrictDepBuildsOff(profileDir: string): YamlFixResult {
+  return ensureScalar(profileDir, 'strictDepBuilds', 'false')
+}
+
+/**
+ * 保证顶层标量键等于给定值（不存在就追加，存在但不是这个值就改掉，已经是就什么都不做）。
+ * @param value 写成 YAML 的字面量文本，如 `false`、`hoisted`
+ */
+function ensureScalar(profileDir: string, key: string, value: string): YamlFixResult {
+  const path = yamlPath(profileDir)
+  let text = ''
+  try {
+    text = existsSync(path) ? readFileSync(path, 'utf8') : ''
+  } catch (err) {
+    return { ok: false, path, added: [], backup: null, error: `读不了 ${FILE}：${err instanceof Error ? err.message : String(err)}` }
+  }
+  if (!text.trim()) text = `packages: ['.']\n`
+
+  const eol = text.includes('\r\n') ? '\r\n' : '\n'
+  const lines = text.split(/\r?\n/)
+  const head = new RegExp(`^${key}:\\s*(.*)$`)
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const m = head.exec(lines[i] ?? '')
+    if (!m) continue
+    if ((m[1] ?? '').trim().toLowerCase() === value.toLowerCase()) {
+      return { ok: true, path, added: [], backup: null }
+    }
+    lines[i] = `${key}: ${value}`
+    const backup = backupYaml(profileDir)
+    try {
+      writeAtomic(profileDir, lines.join(eol))
+      return { ok: true, path, added: [key], backup }
+    } catch (err) {
+      return { ok: false, path, added: [], backup, error: `写 ${FILE} 失败：${err instanceof Error ? err.message : String(err)}` }
+    }
+  }
+
+  let tail = text
+  if (!tail.endsWith(eol)) tail += eol
+  const backup = backupYaml(profileDir)
+  try {
+    writeAtomic(profileDir, `${tail}${key}: ${value}${eol}`)
+    return { ok: true, path, added: [key], backup }
+  } catch (err) {
+    return { ok: false, path, added: [], backup, error: `写 ${FILE} 失败：${err instanceof Error ? err.message : String(err)}` }
+  }
+}
+
+/**
+ * 补上 DSH 自己会给每个 profile 写的那两行 pnpm 基线配置。
+ *
+ * 实测（本机三个 profile 的 pnpm-workspace.yaml 全都长这样，是 DSH 安装时写的）：
+ *   nodeLinker: hoisted
+ *   autoInstallPeers: false
+ *
+ * 为什么必须补（2026-11-07 实测复现）：
+ *   - `autoInstallPeers: false`：很多插件把 `@deepseek-ai/dsh-*` 写成 peer。开着自动装 peer，
+ *     pnpm 就会去 registry 找 `@deepseek-ai/dsh-settings@>=0.2.2 <0.3.0-0` 这类范围，
+ *     而 DSH 运行时**只有预发布版**（两个 registry 的 0.2.x 全是 rc/alpha，semver 区间
+ *     不含预发布版）→ 直接 ERR_PNPM_NO_MATCHING_VERSION。关掉之后这三个包实测
+ *     一个个装成功（exit 0）。
+ *   - `nodeLinker: hoisted`：DSH 从 profile 的 node_modules 顶层加载插件，扁平的
+ *     布局才能让插件的传递依赖被解析到。
+ *
+ * 只补缺的键，已有值一律不动 —— 用户 / DSH 自己写过的配置优先级高于我们。
+ */
+export function ensurePnpmBaseline(profileDir: string): string[] {
+  const added: string[] = []
+  const a = ensureScalar(profileDir, 'nodeLinker', 'hoisted')
+  if (a.ok && a.added.length > 0) added.push('nodeLinker: hoisted')
+  const b = ensureScalar(profileDir, 'autoInstallPeers', 'false')
+  if (b.ok && b.added.length > 0) added.push('autoInstallPeers: false')
+  return added
+}
+
 /* ------------------------------------------------------------------ *
  * 从 pnpm 输出里认错误 → 推断该往 yaml 里补什么
  * ------------------------------------------------------------------ */
@@ -349,4 +447,25 @@ export function parseMinimumReleaseAgeKeys(log: string): string[] {
     keys.add(`${name}@${ver}`)
   }
   return Array.from(keys)
+}
+
+/**
+ * ERR_PNPM_IGNORED_BUILDS → 被拒绝执行构建脚本的依赖名列表。
+ *
+ * 这些**不是**要放行的东西，只是拿来写日志，让用户知道「pnpm 为什么退出了非零」。
+ * 报错行形如：
+ *   [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: node-pty@1.2.0-beta.15, koffi@3.1.1
+ */
+export function parseIgnoredBuilds(log: string): string[] {
+  if (!/ERR_PNPM_IGNORED_BUILDS|Ignored build scripts/i.test(log)) return []
+  const m = /Ignored build scripts:\s*([^\n\r]+)/i.exec(log)
+  if (!m?.[1]) return []
+  return Array.from(
+    new Set(
+      m[1]
+        .split(',')
+        .map((s) => s.trim().replace(/[.;]\s*$/, ''))
+        .filter(Boolean)
+    )
+  )
 }

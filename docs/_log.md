@@ -768,3 +768,84 @@ CaskaydiaMono NFP ExtraLight (TrueType)
 结论：用户手上是 **CaskaydiaMono** Nerd Font（+ MartianMono Nerd Font），`CaskaydiaCove Nerd Font` 是另一个家族（字形比例版），他截图里那个大概是网页 / README 上的字体展示。要装的话得从 nerd-fonts 的 release 下 `CaskaydiaCove.zip` 再装。
 
 **教训**：**「系统里有哪些字体」这件事，注册表给的是「安装记录」，字体文件才给「CSS 能用的名字」**。凡是把系统信息交给 CSS / 渲染层用的地方，都要拿渲染层真能匹配的标识（家族名），而不是安装记录里的显示名 —— 这类错会表现成「列表里全是选了没反应的东西」，用户只会说「找不到我的字体」。验证手段也很简单：**canvas 量同一串字的宽度，和不存在的家族对比**，比读文档猜靠谱。
+
+## 2026-11-07 第八批：清单导入「明明装上了却报安装失败」（Master 在朋友机器上遇到的）
+
+用户原话（m12166）：「我在我朋友电脑上安装了之后，我把我的清单导入给他安装一下，他那里一直显示安装失败，但是还是安装上了呀，我看日志一直显示安装失败，vpn也配置了」
+
+### ① 真凶：pnpm 因为「不批准构建脚本」退出 1，包其实装上了 —— 我们只看退出码
+
+复现（一次性 profile，手工造一份带构建脚本依赖的树）：
+
+```
+$ pnpm add dsh-music-player@1.0.3
+dependencies:
++ dsh-music-player 1.0.3          ← 明明装上了
+[ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: cloudflared@0.7.3, …
+Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.
+$ echo $LASTEXITCODE
+1                                 ← 我们拿这个判成败
+```
+
+pnpm 11 的 `strictDepBuilds` 默认开着：**只要树里有「带构建脚本但没被批准」的依赖，就报错并以退出码 1 结束**，而依赖图其实已经写好了。这个状态还会**传染** —— 之后每一次 pnpm 操作都复现，所以用户看到的是「一直显示安装失败」。
+
+修法分三层：
+
+1. **判成败不看退出码，看磁盘**。新增 `installedOnDisk(profileDir, name)`（唯一判据 = `node_modules/<name>/package.json` 在不在）。
+   - 批量装非零 → 先逐个查磁盘，全都已落盘就记一条「命令退出码是 N，但清单里的 M 个包都已经在磁盘上了 —— 按实际状态算成功」并**跳过逐个降级重装**（原逻辑会为这 15 个包再跑 15 次 pnpm，白等 10 分钟）。
+   - 逐个装非零 → 同样先查磁盘，落盘即算成功；第 7 步 `after.has(name)` 判空时用磁盘兜底。
+   - `opInstall` / `opUpdate` 也照这个来（更新用「版本真的变了」当判据）。
+2. **自愈：写 `strictDepBuilds: false` 重试一次**（`profileYaml.ensureStrictDepBuildsOff`）。写进 profile 的 `pnpm-workspace.yaml` 之后，同样的安装变成：
+   ```
+   Ignored build scripts: cloudflared@0.7.3.
+   Done in 672ms using pnpm v11.28.5      ← 退出码 0
+   ```
+   **脚本依然不会被执行**（只是不再当成错误），安全性没变。
+   反例（都无效，别浪费时间）：单写 `ignoredBuiltDependencies: [包名]` 无效；`<profile>/.npmrc` 里 `strict-dep-builds=false` 无效。
+3. **部分成功不该显示成「操作失败」**：`OpResult` 加 `partial?: boolean`，store 里 `toast('warn', '部分完成', …)`。原来的文案是「0 个装好，15 个失败」，实际 11 个装好了 —— 这种谎比不报还糟。
+
+复测（一次性 profile，15 条清单）：**改前 `清单导入：0 个装好，15 个失败` → 改后 `清单导入：11 个装好，4 个失败` + `partial: true`**，日志里能看到自愈真的触发。
+
+### ② 顺手捞出来的第二类失败：profile 缺 DSH 的 pnpm 基线
+
+那一轮 4 个真失败里有 3 个是 `ERR_PNPM_NO_MATCHING_VERSION`：`@smalltailqwq/dsh-client-ui-skin-maid-atelier` 要 `@deepseek-ai/dsh@>=0.2.2 <0.3.0`、`dsh-better-sidebar` 要 `dsh-client-ui-conversation@>=0.2.2 <0.3.0-0`、`wallpaper-engine` 要 `dsh-client-ui-slots@>=0.2.0 <0.3.0-0`。
+
+- 两个 registry 实测：`@deepseek-ai/dsh-*` 的 **0.2.x 稳定版数量 = 0**（各 15 个全是 rc/alpha，`dist-tags.latest` 还停在 `0.0.1-rc.1`）→ semver 区间不含预发布版，**范围本身无解**，不是镜像问题。
+- 但本机三个 profile 的 `pnpm-workspace.yaml` 都带着：
+
+  ```yaml
+  packages: ['.']
+  nodeLinker: hoisted
+  autoInstallPeers: false
+  ```
+
+  这是 DSH 自己写的基线。**`autoInstallPeers: false` 一关，pnpm 就不会去给 peer 找正式版** —— 那三个包立刻都能装（实测 `dsh-better-sidebar 0.30.1` / `dsh-plugin-wallpaper-engine 1.4.2` / `dsh-client-ui-skin-maid-atelier 0.1.9` 全 exit 0）。
+
+所以 `ops.ts` 里加了 `ensurePnpmBaseline(ctx, hooks)`（5 处调用点），用 `profileYaml.ensurePnpmBaseline` **只补缺的键**，DSH / 用户写过的值一律不动。全新 profile 上实测输出：「profile 缺 DSH 的 pnpm 基线配置，已补上：nodeLinker: hoisted、autoInstallPeers: false」。
+
+**注意**：这三个包在「全新 profile」上失败，本来就不是用户的错，也不是我们写错了什么 —— 是我们的工具在一个 DSH 还没初始化过的 profile 上跑，少了 DSH 自己会写的那两行。**替用户补基线，比给一句「版本不存在」的报错强。**
+
+### 全新 profile 端到端复测（模拟朋友那台机器）
+
+把一次性 profile 复位成 `{"dependencies":{}}` + `pnpm-workspace.yaml` 只有一行 `packages: ['.']`，再导 15 条清单：
+
+- **`清单导入：13 个装好，2 个失败` + `partial: true`**（改前是「0 个装好，15 个失败」）。
+- 13 条 npm 全进，包括之前「必然失败」的那三个。
+- 2 个失败是**真的连不上 GitHub**：`Recv failure: Connection was reset` / `Could not connect to github.com port 443 after 21062 ms` —— git 来源的包在这台机器上本来就在抖（第七批实验表里记过），文案也如实说「连不上 registry —— 网络或代理的问题」。
+- bundle 加载列表进了 12 条。
+
+`pnpm-workspace.yaml` 最终态（我们的两处自愈都写进去了）：
+
+```yaml
+packages: ['.']
+nodeLinker: hoisted
+autoInstallPeers: false
+strictDepBuilds: false
+```
+
+### 教训
+
+1. **pnpm 的退出码不等于「装没装上」**。11 的反供应链策略会拿非零退出码表达「我不想执行你的构建脚本」，而依赖树已经落地。凡是要判成败的地方，判据得是**磁盘上的事实**（`node_modules/<name>/package.json`），退出码只能当参考。
+2. **失败文案说错方向比不说更费用户时间**。这一轮里三条原始文案都在带偏：假的「安装失败」、git 失败被说成「网络或代理的问题」（有时真因是仓库不存在，`Repository not found` 分支是前一轮加的）、`NO_MATCHING_VERSION` 被说成「版本号写错了」（真因是 DSH 运行时只有预发布版）。**每次给用户一句归因，都要先问自己：这句话把他推向哪个动作？推错方向就是负价值。**
+3. **「全新机器」要专门造**：把 profile 复位成 `dependencies: {}`、`pnpm-workspace.yaml` 只剩一行，才是用户朋友那台机器。在自己的老 profile 上测，基线早就齐了，什么都测不出来。
+4. **Toast 会自动消失，轮询会漏**。等一个可能只活 5 秒的 Toast，正确姿势是**先装一个 `MutationObserver` 记录器**（`scripts/_toast-watch.js`），再触发操作，最后读记录 —— 用 `setInterval` 轮询去抓等于赌运气。

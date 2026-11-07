@@ -343,6 +343,13 @@ export interface OpResult {
   message: string
   /** 是否需要重启 DSH 才生效 */
   restartRequired: boolean
+  /**
+   * 部分成功：有失败条目，但确实也装上了东西。
+   *
+   * 界面用「部分完成」而不是「操作失败」—— 一次导入清单装了 15 个、漏了 1 个，
+   * 报成整片红色失败会让人以为白干了。
+   */
+  partial?: boolean
   /** 完整日志（UI 的日志抽屉用） */
   log: string
 }

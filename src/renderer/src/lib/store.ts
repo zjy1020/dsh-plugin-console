@@ -1201,8 +1201,13 @@ export function ConsoleProvider({ children }: { children: ReactNode }) {
 
       /* 清单批量安装失败时走折叠文案：toast 的 detail 只有 68px 高、又不保留换行
        * （components.css 的 .toast__detail），所以这里要的是那一句话，明细留给弹窗。 */
+      const partial = !result.ok && result.partial === true
       const headline = result.ok ? result.message : manifestFailureHeadline(result) ?? result.message
-      toast(result.ok ? 'success' : 'error', result.ok ? '操作完成' : '操作失败', headline)
+      toast(
+        result.ok ? 'success' : partial ? 'warn' : 'error',
+        result.ok ? '操作完成' : partial ? '部分完成' : '操作失败',
+        headline
+      )
 
       /* 失败如果压根不是插件的问题、而是 DSH 环境没定下来，只说原因没用 ——
        * 用户要的是一个能点的地方。toast 是纯展示、没有动作位（而 Toasts 组件不在
